@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reconciliation Statement</title>
+  <style>
+    table { width:100%; border-collapse: collapse; }
+    table, th, td { border:1px solid #000; }
+    th, td { padding:5px; text-align:left; }
+  </style>
+</head>
+<body>
+<h1>Reconciliation Statement</h1>
+<p>Customer: <span data-ref="header-customer_name"></span></p>
+<p>Period: <span data-ref="header-start_date"></span> to <span data-ref="header-end_date"></span></p>
+
+<table id="invoices-table">
+  <thead>
+    <tr>
+      <th>Invoice Date</th>
+      <th>Invoice Number</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td data-ref="invoices-table-date"></td>
+      <td data-ref="invoices-table-number"></td>
+      <td data-ref="invoices-table-amount"></td>
+    </tr>
+  </tbody>
+</table>
+
+<table id="payments-table">
+  <thead>
+    <tr>
+      <th>Transaction Date</th>
+      <th>Amount</th>
+      <th>Sender</th>
+      <th>Title</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td data-ref="payments-table-transaction_date"></td>
+      <td data-ref="payments-table-amount"></td>
+      <td data-ref="payments-table-sender"></td>
+      <td data-ref="payments-table-title"></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Total Invoices: <span data-ref="summary-total_invoices"></span></p>
+<p>Total Payments: <span data-ref="summary-total_payments"></span></p>
+<p>Balance: <span data-ref="summary-balance"></span></p>
+</body>
+</html>

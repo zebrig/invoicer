@@ -1,0 +1,7 @@
+{
+    "require": {
+        "guzzlehttp/guzzle": "^7.9",
+        "league/oauth2-client": "^2.8",
+        "thenetworg/oauth2-azure": "^2.2"
+    }
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reconciliation Statement</title>
+  <style>
+    table { width:100%; border-collapse: collapse; }
+    table, th, td { border:1px solid #000; }
+    th, td { padding:5px; text-align:left; }
+  </style>
+</head>
+<body>
+<h1>Reconciliation Statement</h1>
+<p>Customer: <span data-ref="header-customer_name"></span></p>
+<p>Period: <span data-ref="header-start_date"></span> to <span data-ref="header-end_date"></span></p>
+
+<table id="transactions-table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Reference</th>
+      <th data-invoice-description="Invoice" data-payment-description="Payment Received">Description</th>
+      <th>Amount</th>
+      <th>Balance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td data-ref="transactions-table-date"></td>
+      <td data-ref="transactions-table-reference"></td>
+      <td data-ref="transactions-table-description"></td>
+      <td data-ref="transactions-table-amount"></td>
+      <td data-ref="transactions-table-balance"></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>

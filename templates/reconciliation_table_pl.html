@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Rachunek Rozliczeniowy</title>
+  <style>
+    table { width:100%; border-collapse: collapse; }
+    table, th, td { border:1px solid #000; }
+    th, td { padding:5px; text-align:left; }
+  </style>
+</head>
+<body>
+<h1>Rachunek Rozliczeniowy</h1>
+<p>Klient: <span data-ref="header-customer_name"></span></p>
+<p>Okres: <span data-ref="header-start_date"></span> do <span data-ref="header-end_date"></span></p>
+
+<table id="transactions-table">
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Numer</th>
+      <th data-invoice-description="Faktura" data-payment-description="Wpłata">Opis</th>
+      <th>Kwota</th>
+      <th>Saldo</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td data-ref="transactions-table-date"></td>
+      <td data-ref="transactions-table-reference"></td>
+      <td data-ref="transactions-table-description"></td>
+      <td data-ref="transactions-table-amount"></td>
+      <td data-ref="transactions-table-balance"></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>
