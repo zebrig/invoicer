@@ -4,8 +4,8 @@ Lightweight invoice generator using PHP backend and Vue 3 frontend.
 
 ## Features
 
-- Manage customers (add/edit/delete; now include ID number, VAT number, website, currency, and optional logo (PNG/SVG/GIF up to 10KB)).
-- Manage issuing companies (add/edit/delete company details for invoice dropdown; supports currency (read-only once an invoice exists) and optional logo (PNG/SVG/GIF up to 10KB) shown on invoices).
+- Manage customers (add/edit/delete; now include agreement, ID number, VAT number, website, currency, and optional logo (PNG/SVG/GIF up to 10KB)).
+- Manage issuing companies (add/edit/delete company details for invoice dropdown; now include company property, supports currency (read-only once an invoice exists) and optional logo (PNG/SVG/GIF up to 10KB) shown on invoices).
 - Manage service items (add/edit/delete descriptions, unit prices, and currency).
 - Create, edit, and view invoices with live HTML preview and customizable templates.
 - Auto-generate invoice numbers (first three uppercase letters of client name + invoice date, e.g. IMO-20250228).

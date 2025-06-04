@@ -28,6 +28,25 @@ require_once __DIR__ . '/../auth.php';
       }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script>
+    (function(){
+      const _fetch = window.fetch;
+      window.fetch = function(...args){
+        return _fetch(...args).then(async response=>{
+          if(!response.ok){
+            const text = await response.text().catch(()=>'');
+            const msg = `Error ${response.status} (${response.statusText}): ${text}`;
+            alert(msg);
+            throw new Error(msg);
+          }
+          return response;
+        }).catch(err=>{
+          alert(`Network error: ${err.message}`);
+          throw err;
+        });
+      };
+    })();
+    </script>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">

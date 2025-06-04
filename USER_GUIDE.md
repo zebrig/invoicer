@@ -30,12 +30,12 @@
  ### Customers
 
  - Go to **Customers** to add, edit, or delete customer profiles.
- - Provide contact details, company information, tax identifiers (ID/VAT numbers), website, currency, and an optional logo (PNG/SVG/GIF up to 10 KB).
+- Provide contact details, company information, tax identifiers (ID/VAT numbers), website, agreement, currency, and an optional logo (PNG/SVG/GIF up to 10 KB).
 
  ### Companies
 
  - Under **Companies**, configure your issuing companies (for the “From” section on invoices).
- - Include business details, bank information, currency, and an optional logo.
+- Include company property, business details, bank information, currency, and an optional logo.
 
  ### Services
 

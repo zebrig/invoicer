@@ -134,12 +134,15 @@ switch ($method) {
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare(
-            'INSERT INTO invoices (customer_id,company_id,invoice_number,date,month_service,status,currency,vat_rate,items,company_details,subtotal,tax,total) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+            'INSERT INTO invoices (
+                customer_id,company_id,invoice_number,date,month_service,status,template,
+                currency,vat_rate,items,company_details,subtotal,tax,total
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
         );
         $dbSaved = false;
         try {
             $dbSaved = $stmt->execute([
-                $data['customer_id'], $data['company_id'], $data['invoice_number'], $data['date'], $data['month_service'], $data['status'],
+                $data['customer_id'], $data['company_id'], $data['invoice_number'], $data['date'], $data['month_service'], $data['status'], $data['template'],
                 $data['currency'], $data['vat_rate'], json_encode($data['items']),
                 json_encode($data['company_details']), $data['subtotal'], $data['tax'], $data['total'],
             ]);
@@ -197,12 +200,15 @@ switch ($method) {
     case 'PUT':
         $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare(
-            'UPDATE invoices SET customer_id=?,company_id=?,invoice_number=?,date=?,month_service=?,status=?,currency=?,vat_rate=?,items=?,company_details=?,subtotal=?,tax=?,total=? WHERE id=?'
+            'UPDATE invoices SET
+                customer_id=?,company_id=?,invoice_number=?,date=?,month_service=?,status=?,template=?,
+                currency=?,vat_rate=?,items=?,company_details=?,subtotal=?,tax=?,total=?
+             WHERE id=?'
         );
         $dbSaved = false;
         try {
             $dbSaved = $stmt->execute([
-                $data['customer_id'], $data['company_id'], $data['invoice_number'], $data['date'], $data['month_service'], $data['status'],
+                $data['customer_id'], $data['company_id'], $data['invoice_number'], $data['date'], $data['month_service'], $data['status'], $data['template'],
                 $data['currency'], $data['vat_rate'], json_encode($data['items']),
                 json_encode($data['company_details']), $data['subtotal'], $data['tax'], $data['total'],
                 $data['id'],

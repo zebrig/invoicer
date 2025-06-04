@@ -27,6 +27,11 @@ switch ($method) {
                 $stmt->execute([$id, $_SESSION['user_id']]);
                 $customer = $stmt->fetch(PDO::FETCH_ASSOC);
             }
+            if ($customer) {
+                $pstmt = $pdo->prepare('SELECT entity, property, prefix FROM customer_prefixes WHERE customer_id = ?');
+                $pstmt->execute([$id]);
+                $customer['prefixes'] = $pstmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             echo json_encode($customer ?: null);
             break;
         }
@@ -50,9 +55,9 @@ switch ($method) {
 
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
-        $stmt = $pdo->prepare('INSERT INTO customers (name,email,company,id_number,vat_number,website,address,city,postal_code,country,phone,currency,logo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt = $pdo->prepare('INSERT INTO customers (name,email,company,agreement,id_number,vat_number,website,address,city,postal_code,country,phone,currency,logo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $stmt->execute([
-            $data['name'], $data['email'], $data['company'],
+            $data['name'], $data['email'], $data['company'], $data['agreement'] ?? null,
             $data['id_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
             $data['address'], $data['city'], $data['postal_code'],
             $data['country'], $data['phone'], $data['currency'], $data['logo'] ?? null,
@@ -61,9 +66,9 @@ switch ($method) {
         break;
     case 'PUT':
         $data = json_decode(file_get_contents('php://input'), true);
-        $stmt = $pdo->prepare('UPDATE customers SET name=?,email=?,company=?,id_number=?,vat_number=?,website=?,address=?,city=?,postal_code=?,country=?,phone=?,currency=?,logo=? WHERE id=?');
+        $stmt = $pdo->prepare('UPDATE customers SET name=?,email=?,company=?,agreement=?,id_number=?,vat_number=?,website=?,address=?,city=?,postal_code=?,country=?,phone=?,currency=?,logo=? WHERE id=?');
         $stmt->execute([
-            $data['name'], $data['email'], $data['company'],
+            $data['name'], $data['email'], $data['company'], $data['agreement'] ?? null,
             $data['id_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
             $data['address'], $data['city'], $data['postal_code'],
             $data['country'], $data['phone'], $data['currency'], $data['logo'] ?? null, $data['id'],

@@ -113,12 +113,21 @@ if (isset($invId)) {
             <select v-model="selectedCompany" @change="loadCompany" class="form-select">
               <option v-for="c in filteredCompanies" :value="c">{{ c.name }}</option>
             </select>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" @click="loadCompany">
+              Re-fill company details
+            </button>
           </div>
           <div class="mb-3"><label class="form-label">Name</label>
             <input v-model="myCompany.name" class="form-control" />
           </div>
+          <div class="mb-3"><label class="form-label">Company</label>
+            <input v-model="myCompany.company" class="form-control" />
+          </div>
           <div class="mb-3"><label class="form-label">ID Number</label>
             <input v-model="myCompany.id_number" class="form-control" />
+          </div>
+          <div class="mb-3"><label class="form-label">REGON/KRS Number</label>
+            <input v-model="myCompany.regon_krs_number" class="form-control" />
           </div>
           <div class="mb-3"><label class="form-label">VAT Number</label>
             <input v-model="myCompany.vat_number" class="form-control" />
@@ -163,13 +172,11 @@ if (isset($invId)) {
   <div class="card mb-4">
     <div class="card-header">Items</div>
     <div class="card-body">
-      <table class="table table-sm">
+      <table class="table table-bordered">
         <thead>
           <tr>
             <th>Description</th>
-            <th>Specify Month</th>
-            <th>Unit / Hour Price</th>
-            <th>Time-based</th>
+            <th>Unit / Hr Price</th>
             <th>Qty / H:M</th>
             <th>Line (Net/Gross)</th>
             <th>Actions</th>
@@ -177,38 +184,34 @@ if (isset($invId)) {
         </thead>
         <tbody>
           <tr v-for="(line,index) in invoice.items" :key="index" :class="{'table-warning': lineMonthMismatch(line)}">
-            <td>
+            <td class="col-6">
               <input type="text" list="services-list" v-model="line.description"
                 @input="onSelectService(line)" class="form-control"/>
+                <input class="form-check-input" type="checkbox" v-model="line.specify_month"
+                      @change="onToggleMonth(line)" :id="`specify-month-${index}`">
+              <label class="form-check-label fs-6" :for="`specify-month-${index}`">Specify month</label>
               <div v-if="lineMonthMismatch(line)" class="text-warning small mt-1">
                 Specified month does not match invoice month of service {{ invoice.month_service }}.
               </div>
             </td>
-            <td>  
-              <input class="form-check-input" type="checkbox" v-model="line.specify_month"
-                      @change="onToggleMonth(line)" :id="`specify-month-${index}`">
-              <label class="form-check-label fs-6" :for="`specify-month-${index}`">Specify month</label>
-            </td>
-            <td><input type="number" v-model.number="line.unit_price"
+            <td class="col-1"><input type="number" v-model.number="line.unit_price"
                   class="form-control" @input="calculateTotals" style="flex: 0 1 80px;"/></td>
-            <td>
-              <input class="form-check-input" type="checkbox" v-model="line.time_based"
-                     @change="onToggleTimeBased(line)" :id="`time-based-${index}`">
-              <label class="form-check-label fs-6" :for="`time-based-${index}`">Time-based</label>
-            </td>
-            <td>
+            <td class="col-2">
               <div v-if="line.time_based" class="d-flex">
-                <input type="number" v-model.number="line.hours" class="form-control form-control-sm" @input="onTimeChange(line)" style="flex: 0 1 80px;">
+                <input type="number" v-model.number="line.hours" class="form-control" @input="onTimeChange(line)" style="flex: 0 1 80px;">
                 <span class="me-1 align-self-center">h</span>
-                <input type="number" v-model.number="line.minutes" class="form-control form-control-sm" @input="onTimeChange(line)" style="flex: 0 1 80px;">
+                <input type="number" v-model.number="line.minutes" class="form-control" @input="onTimeChange(line)" style="flex: 0 1 80px;">
                 <span class="align-self-center">m</span>
               </div>
               <div v-else>
                 <input type="number" v-model.number="line.quantity" class="form-control" @input="calculateTotals"/>
               </div>
+              <input class="form-check-input" type="checkbox" v-model="line.time_based"
+                     @change="onToggleTimeBased(line)" :id="`time-based-${index}`">
+              <label class="form-check-label fs-6" :for="`time-based-${index}`">Time-based</label>
             </td>
-            <td>{{ formatCurrency(line.subtotal, invoice.currency) }} / {{ formatCurrency(line.subtotal * (1 + invoice.vat_rate/100), invoice.currency) }}</td>
-            <td><button class="btn btn-sm btn-danger"
+            <td class="col-2">{{ formatCurrency(line.subtotal, invoice.currency) }} / {{ formatCurrency(line.subtotal * (1 + invoice.vat_rate/100), invoice.currency) }}</td>
+            <td class="col-1"><button class="btn btn-sm btn-danger"
                    @click="removeLine(index)">Remove</button></td>
           </tr>
         </tbody>
@@ -248,9 +251,9 @@ if (isset($invId)) {
         </div>
         <div class="row">
           <div class="mb-3">
-            <button class="btn btn-success" @click="generatePreview">1. Generate Invoice</button>
-            <button class="btn btn-primary ms-2" @click="saveInvoice">2. Save to db</button>
-            <button class="btn btn-outline-primary ms-2" @click="printInvoice">3. Print / Save as PDF</button>
+            <button class="btn btn-success" @click="generatePreview">Preview Invoice</button>
+            <button class="btn btn-primary ms-2" @click="saveInvoice">Save to db</button>
+            <button class="btn btn-outline-primary ms-2" @click="printInvoice">Save + Print as PDF</button>
           </div>
         </div>
       </div>
@@ -273,15 +276,42 @@ if (isset($invId)) {
     <div class="card-body">
       <table class="table table-sm">
         <thead>
-          <tr><th>Date</th><th>Customer</th><th>Invoice #</th><th>Time</th><th>View</th></tr>
+          <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Invoice #</th>
+            <th>Time</th>
+            <th>View</th>
+            <th>Print</th>
+            <th>Delete</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="h in historyEntries" :key="h.file">
-            <td>{{ h.date }}</td><td>{{ h.customer }}</td>
-            <td>{{ h.invoice }}</td><td>{{ h.time }}</td>
+            <td>{{ h.date }}</td>
+            <td>{{ h.customer }}</td>
+            <td>{{ h.invoice }}</td>
+            <td>{{ h.time }}</td>
             <td>
-              <a :href="'view_invoice_history.php?file=' + encodeURIComponent(h.file)" target="_blank"
-                class="btn btn-sm btn-outline-primary">View</a>
+              <a :href="'view_invoice_history.php?file=' + encodeURIComponent(h.file)"
+                 target="_blank"
+                 class="btn btn-sm btn-outline-primary">
+                View
+              </a>
+            </td>
+            <td>
+              <button type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="printHistory(h.file)">
+                PDF
+              </button>
+            </td>
+            <td>
+              <button type="button"
+                      class="btn btn-sm btn-danger"
+                      @click="deleteHistory(h.file)">
+                Delete
+              </button>
             </td>
           </tr>
         </tbody>
@@ -344,7 +374,7 @@ createApp({
       invoice: { id: null, customer_id: null, company_id: null, invoice_number: '', date: '', month_service: '', status: 'unpaid', currency: 'USD', vat_rate: 23, items: [] },
       myCompanies: [],
       selectedCompany: null,
-      myCompany: { name: '', id_number: '', vat_number: '', website: '', email: '', phone: '', address: '', city: '', postal_code: '', country: '', bank_name: '', bank_account: '', bank_code: '' },
+      myCompany: { name: '', company: '', id_number: '', regon_krs_number: '', vat_number: '', website: '', email: '', phone: '', address: '', city: '', postal_code: '', country: '', bank_name: '', bank_account: '', bank_code: '' },
       services: [],
       currencies: [],
       templates: <?= json_encode($templates) ?>,
@@ -398,6 +428,10 @@ createApp({
           fetch('/api/invoices.php?id=' + copyFrom)
             .then(r => r.json()).then(data => {
               this.invoice = data;
+              // restore saved template or default
+              if (data.template && this.templates.includes(data.template)) {
+                this.selectedTemplate = data.template;
+              }
               this.invoice.id = null;
               this.invoice.customer_id = cid;
               this.invoice.company_id = data.company_id;
@@ -435,6 +469,12 @@ createApp({
           fetch('/api/invoices.php?id=' + invId)
             .then(r => r.json()).then(data => {
               this.invoice = data;
+              // select saved template or fallback to default
+              if (data.template && this.templates.includes(data.template)) {
+                this.selectedTemplate = data.template;
+              } else {
+                this.selectedTemplate = this.templates[0] || '';
+              }
               this.invoice.company_id = data.company_id;
               this.myCompany = data.company_details || this.myCompany;
               this.selectedCompany = this.myCompanies.find(c => c.id == this.invoice.company_id) || this.selectedCompany;
@@ -480,6 +520,21 @@ createApp({
           .then(r => r.json())
           .then(data => { this.historyFiles = data; });
       }
+    },
+    deleteHistory(file) {
+      if (!confirm('Delete this history file?')) return;
+      fetch(
+        `/api/invoice_history.php?invoice_id=${this.invoice.id}&file=${encodeURIComponent(file)}`,
+        { method: 'DELETE' }
+      )
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            this.fetchHistory();
+          } else {
+            alert('Failed to delete history file: ' + (data.error || ''));
+          }
+        });
     },
     addLine() {
       this.invoice.items.push({ description: '', unit_price: 0, quantity: 1, subtotal: 0, specify_month: false, time_based: false, hours: 0, minutes: 0 });
@@ -580,21 +635,23 @@ createApp({
         const ref = el.getAttribute('data-ref');
         if (!ref.includes('-')) return;
         const key = ref.split('-').slice(1).join('-');
-        let value;
+        let value, group, prop;
         if (key.startsWith('company.')) {
-          const prop = key.replace('company.', '');
+          group = 'company';
+          prop = key.replace('company.', '');
           switch (prop) {
             case 'address1':
               value = this.myCompany.address;
               break;
             case 'city_state_postal':
-              value = this.myCompany.city + ' ' + this.myCompany.postal_code;
+              value = this.myCompany.postal_code + ', ' + this.myCompany.city;
               break;
             default:
               value = this.myCompany[prop];
           }
         } else if (key.startsWith('client.') || key === 'contact.email') {
-          const prop = key.replace('client.', '');
+          group = 'client';
+          prop = key.replace('client.', '');
           switch (prop) {
             case 'number':
               value = this.customer.id_number;
@@ -606,7 +663,7 @@ createApp({
               value = this.customer.address;
               break;
             case 'city_state_postal':
-              value = this.customer.city + ' ' + this.customer.postal_code;
+              value = this.customer.postal_code + ', ' + this.customer.city;
               break;
             case 'country':
               value = this.customer.country;
@@ -618,7 +675,7 @@ createApp({
               value = this.customer[prop];
           }
         } else if (key.startsWith('invoice.')) {
-          const prop = key.replace('invoice.', '');
+          prop = key.replace('invoice.', '');
           switch (prop) {
             case 'number':
               value = this.invoice.invoice_number;
@@ -628,6 +685,12 @@ createApp({
           }
         }
         if (value != null) {
+          if (group && this.customer.prefixes) {
+            const pfx = this.customer.prefixes.find(p => p.entity === group && p.property === prop);
+            if (pfx && value.toString().trim() !== '') {
+              value = pfx.prefix + ' ' + value;
+            }
+          }
           el.textContent = value;
         }
       });
@@ -724,17 +787,30 @@ createApp({
       frameDoc.write(html);
       frameDoc.close();
     },
-    printInvoice() {
+    async printInvoice() {
+      // Always save (with regenerated preview) before printing
+      await this.saveInvoice();
       const frame = document.getElementById('invoice-preview-iframe');
       if (frame && frame.contentWindow) {
         frame.contentWindow.focus();
         frame.contentWindow.print();
       }
     },
+    async printHistory(file) {
+      const url = 'view_invoice_history.php?file=' + encodeURIComponent(file);
+      const win = window.open(url, '_blank');
+      if (win) {
+        win.focus();
+        win.print();
+      }
+    },
+
     async saveInvoice() {
+      // Always re-generate preview and totals before saving
       await this.generatePreview();
       this.calculateTotals();
       const payload = Object.assign({}, this.invoice, {
+        template: this.selectedTemplate,
         items: this.invoice.items,
         company_id: this.invoice.company_id,
         company_details: this.myCompany,
@@ -745,38 +821,37 @@ createApp({
         preview_html: this.previewHtml
       });
       const method = this.invoice.id ? 'PUT' : 'POST';
-      fetch('/api/invoices.php', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).then(r => r.json()).then(data => {
-        const wasNew = !this.invoice.id;
-        if (data.id) this.invoice.id = data.id;
-        const msgs = [];
-        if (data.db_saved) {
-          msgs.push('Saved to DB');
-        } else {
-          msgs.push('Failed saving to DB');
-        }
-        if (typeof data.file_saved !== 'undefined') {
-          if (data.file_saved) {
-            msgs.push('Saved HTML snapshot');
-          } else {
-            msgs.push('Failed saving HTML snapshot');
-          }
-        }
-        if (data.file_error) {
-          msgs.push('Error: ' + data.file_error);
-        }
-        alert(msgs.join("\n"));
-        if (data.id && wasNew) {
-          const params = new URLSearchParams(window.location.search);
-          params.set('invoice_id', data.id);
-          window.location.search = params.toString();
-          return;
-        }
-        this.fetchHistory();
-      });
+      let data;
+      try {
+        const resp = await fetch('/api/invoices.php', {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        data = await resp.json();
+      } catch (e) {
+        alert('Error saving invoice: ' + e.message);
+        return;
+      }
+      const wasNew = !this.invoice.id;
+      if (data.id) this.invoice.id = data.id;
+      const msgs = [];
+      msgs.push(data.db_saved ? 'Saved to DB' : 'Failed saving to DB');
+      if (typeof data.file_saved !== 'undefined') {
+        msgs.push(data.file_saved ? 'Saved HTML snapshot' : 'Failed saving HTML snapshot');
+      }
+      if (data.file_error) {
+        msgs.push('Error: ' + data.file_error);
+      }
+      alert(msgs.join("\n"));
+      if (data.id && wasNew) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('invoice_id', data.id);
+        window.location.search = params.toString();
+        return data;
+      }
+      this.fetchHistory();
+      return data;
     }
   },
   watch: {

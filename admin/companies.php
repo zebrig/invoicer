@@ -5,19 +5,20 @@
   <table class="table table-bordered table-striped">
     <thead>
       <tr>
-        <th>Logo</th><th>Name</th><th>ID Number</th><th>VAT Number</th><th>Website</th><th>Email</th><th>Phone</th><th>Address</th><th>City</th><th>Postal Code</th><th>Country</th><th>Bank Name</th><th>Bank Account #</th><th>Bank Code</th><th>Currency</th><th>Actions</th>
+        <th>Name</th><th>Actions</th><th>Company</th><th>Logo</th><th>ID/NIP Number</th><th>REGON/KRS Number</th><th>VAT Number</th><th>Website</th><th>Email</th><th>Phone</th><th>Address</th><th>City</th><th>Postal Code</th><th>Country</th><th>Bank Name</th><th>Bank Account #</th><th>Bank Code</th><th>Currency</th>
       </tr>
     </thead>
     <tbody>
       <tr v-for="c in companies" :key="c.id">
-        <td>
-          <img v-if="c.logo" :src="c.logo" alt="Logo" class="img-fluid" style="max-height:50px;">
-        </td>
-        <td>{{ c.name }}</td><td>{{ c.id_number }}</td><td>{{ c.vat_number }}</td><td>{{ c.website }}</td><td>{{ c.email }}</td><td>{{ c.phone }}</td><td>{{ c.address }}</td><td>{{ c.city }}</td><td>{{ c.postal_code }}</td><td>{{ c.country }}</td><td>{{ c.bank_name }}</td><td>{{ c.bank_account }}</td><td>{{ c.bank_code }}</td><td>{{ c.currency }}</td>
-        <td>
+        
+        <td>{{ c.name }}</td><td>
           <button class="btn btn-sm btn-warning" @click="edit(c)">Edit</button>
-          <button v-if="c.invoice_count === 0" class="btn btn-sm btn-danger" @click="remove(c.id)">Delete</button>
-        </td>
+          <button class="btn btn-sm btn-outline-primary ms-1" @click="copyCompany(c)">Copy</button>
+          <button v-if="c.invoice_count === 0" class="btn btn-sm btn-danger ms-1" @click="remove(c.id)">Delete</button>
+        </td><td>{{ c.company }}</td><td>
+          <img v-if="c.logo" :src="c.logo" alt="Logo" class="img-fluid" style="max-height:50px;">
+        </td><td>{{ c.id_number }}</td><td>{{ c.regon_krs_number }}</td><td>{{ c.vat_number }}</td><td>{{ c.website }}</td><td>{{ c.email }}</td><td>{{ c.phone }}</td><td>{{ c.address }}</td><td>{{ c.city }}</td><td>{{ c.postal_code }}</td><td>{{ c.country }}</td><td>{{ c.bank_name }}</td><td>{{ c.bank_account }}</td><td>{{ c.bank_code }}</td><td>{{ c.currency }}</td>
+        
       </tr>
     </tbody>
   </table>
@@ -32,7 +33,9 @@
         <div class="modal-body">
           <form @submit.prevent="save">
             <div class="mb-3"><label class="form-label">Name</label><input v-model="form.name" required class="form-control"/></div>
-            <div class="mb-3"><label class="form-label">ID Number</label><input v-model="form.id_number" class="form-control"/></div>
+            <div class="mb-3"><label class="form-label">Company</label><input v-model="form.company" class="form-control"/></div>
+            <div class="mb-3"><label class="form-label">ID/NIP Number</label><input v-model="form.id_number" class="form-control"/></div>
+            <div class="mb-3"><label class="form-label">REGON/KRS Number</label><input v-model="form.regon_krs_number" class="form-control"/></div>
             <div class="mb-3"><label class="form-label">VAT Number</label><input v-model="form.vat_number" class="form-control"/></div>
             <div class="mb-3"><label class="form-label">Website</label><input v-model="form.website" class="form-control"/></div>
             <div class="mb-3"><label class="form-label">Email</label><input v-model="form.email" type="email" class="form-control"/></div>
@@ -83,7 +86,7 @@ createApp({
     },
     openForm() {
       this.form = {
-        name: '', id_number: '', vat_number: '', website: '', email: '', phone: '', address: '', city: '', postal_code: '', country: '',
+        name: '', company: '', id_number: '', regon_krs_number: '', vat_number: '', website: '', email: '', phone: '', address: '', city: '', postal_code: '', country: '',
         bank_name: '', bank_account: '', bank_code: '',
         currency: this.currencies[0], logo: '', invoice_count: 0
       };
@@ -110,6 +113,12 @@ createApp({
       if (confirm('Delete this company?')) {
         fetch('/api/companies.php?id=' + id, { method: 'DELETE' }).then(() => this.fetch());
       }
+    },
+    copyCompany(c) {
+      this.form = { ...c, invoice_count: 0 };
+      delete this.form.id;
+      this.$refs.logoInput.value = null;
+      new bootstrap.Modal(this.$refs.modal).show();
     },
     onLogoChange(event) {
       const file = event.target.files && event.target.files[0];
