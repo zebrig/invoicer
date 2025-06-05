@@ -32,7 +32,7 @@ switch ($method) {
                 }
             }
             $stmt = $pdo->prepare(
-                'SELECT id,invoice_number,date,status,currency,subtotal,tax,total,company_id FROM invoices WHERE customer_id = ? ORDER BY date DESC'
+                'SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,company_id FROM invoices WHERE customer_id = ? ORDER BY date DESC'
             );
             $stmt->execute([$customerId]);
             $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -89,7 +89,7 @@ switch ($method) {
         } else {
             if (is_admin()) {
                 $stmt = $pdo->query(
-                    'SELECT id,invoice_number,date,status,currency,subtotal,tax,total,customer_id,company_id FROM invoices ORDER BY date DESC'
+                    'SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,customer_id,company_id FROM invoices ORDER BY date DESC'
                 );
                 $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } else {
@@ -103,7 +103,7 @@ switch ($method) {
                 }
                 $placeholders = implode(',', array_fill(0, count($assigned), '?'));
                 $stmt = $pdo->prepare(
-                    "SELECT id,invoice_number,date,status,currency,subtotal,tax,total,customer_id,company_id FROM invoices WHERE customer_id IN ({$placeholders}) ORDER BY date DESC"
+                    "SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,customer_id,company_id FROM invoices WHERE customer_id IN ({$placeholders}) ORDER BY date DESC"
                 );
                 $stmt->execute($assigned);
                 $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);

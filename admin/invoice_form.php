@@ -57,8 +57,8 @@ if (isset($invId)) {
 ?>
 <div id="app" v-if="invoice">
   <div class="mb-3">
-    <a :href="customer.id>0?'invoices.php?customer_id='+customer.id:'invoices.php'" class="btn btn-outline-secondary">
-      &larr; Back to {{ customer.name }} Invoices
+    <a :href="backLink" class="btn btn-outline-secondary">
+      &larr; {{ backText }}
     </a>
   </div>
   <div class="mb-4">
@@ -179,8 +179,8 @@ if (isset($invId)) {
         <thead>
           <tr>
             <th>Description</th>
-            <th>Unit / Hr Price</th>
             <th>Qty / H:M</th>
+            <th>Unit / Hr Price</th>
             <th>Line (Net/Gross)</th>
             <th>Actions</th>
           </tr>
@@ -197,8 +197,6 @@ if (isset($invId)) {
                 Specified month does not match invoice month of service {{ invoice.month_service }}.
               </div>
             </td>
-            <td class="col-1"><input type="number" v-model.number="line.unit_price"
-                  class="form-control" @input="calculateTotals" style="flex: 0 1 80px;"/></td>
             <td class="col-2">
               <div v-if="line.time_based" class="d-flex">
                 <input type="number" v-model.number="line.hours" class="form-control" @input="onTimeChange(line)" style="flex: 0 1 80px;">
@@ -213,6 +211,8 @@ if (isset($invId)) {
                      @change="onToggleTimeBased(line)" :id="`time-based-${index}`">
               <label class="form-check-label fs-6" :for="`time-based-${index}`">Time-based</label>
             </td>
+            <td class="col-1"><input type="number" v-model.number="line.unit_price"
+                  class="form-control" @input="calculateTotals" style="flex: 0 1 80px;"/></td>
             <td class="col-2">{{ formatCurrency(line.subtotal, invoice.currency) }} / {{ formatCurrency(line.subtotal * (1 + invoice.vat_rate/100), invoice.currency) }}</td>
             <td class="col-1"><button class="btn btn-sm btn-danger"
                    @click="removeLine(index)">Remove</button></td>
@@ -384,7 +384,8 @@ createApp({
       selectedTemplate: <?= !empty($templates) ? json_encode($templates[0]) : "''" ?>,
       historyFiles: <?= json_encode($historyFiles) ?>,
       totals: { subtotal: 0, tax: 0, total: 0 },
-      previewHtml: ''
+      previewHtml: '',
+      returnTo: ''
     };
   },
   methods: {
@@ -396,6 +397,8 @@ createApp({
       const cid = params.get('customer_id');
       const invId = params.get('invoice_id');
       const copyFrom = params.get('copy_from');
+      const returnTo = params.get('return_to');
+      this.returnTo = returnTo;
       this.invoice.customer_id = cid;
 
       // Fetch services
@@ -441,12 +444,11 @@ createApp({
               this.myCompany = data.company_details || this.myCompany;
               this.selectedCompany = this.myCompanies.find(c => c.id == this.invoice.company_id) || this.selectedCompany;
               this.invoice.items = data.items || [];
-              // initialize month checkbox and strip any existing month placeholder
+                // initialize month checkbox (preserving any existing month placeholder)
               this.invoice.items.forEach(line => {
                 const match = line.description.match(/\s\[[0-9]{2}\.[0-9]{4}\]$/);
                 if (match) {
                   line.specify_month = true;
-                  line.description = line.description.replace(/\s\[[0-9]{2}\.[0-9]{4}\]$/, '');
                 } else {
                   line.specify_month = false;
                 }
@@ -482,12 +484,11 @@ createApp({
               this.myCompany = data.company_details || this.myCompany;
               this.selectedCompany = this.myCompanies.find(c => c.id == this.invoice.company_id) || this.selectedCompany;
               this.invoice.items = data.items || [];
-              // initialize month checkbox and strip any existing month placeholder
+              // initialize month checkbox (preserving any existing month placeholder)
               this.invoice.items.forEach(line => {
                 const match = line.description.match(/\s\[[0-9]{2}\.[0-9]{4}\]$/);
                 if (match) {
                   line.specify_month = true;
-                  line.description = line.description.replace(/\s\[[0-9]{2}\.[0-9]{4}\]$/, '');
                 } else {
                   line.specify_month = false;
                 }
@@ -889,6 +890,29 @@ createApp({
         return [];
       }
       return this.myCompanies.filter(c => c.currency === this.invoice.currency);
+    },
+    backLink() {
+      return this.returnTo
+        ? this.returnTo
+        : (this.customer.id > 0
+           ? `invoices.php?customer_id=${this.customer.id}`
+           : 'invoices.php');
+    },
+    backText() {
+      if (this.returnTo) {
+        const url = this.returnTo;
+        const qs = url.includes('?') ? url.split('?')[1] : '';
+        const p = new URLSearchParams(qs);
+        if (p.has('customer_id')) {
+          return `Back to ${this.customer.name} Invoices`;
+        } else {
+          return 'Back to All Invoices';
+        }
+      } else {
+        return this.customer.id > 0
+          ? `Back to ${this.customer.name} Invoices`
+          : 'Back to All Invoices';
+      }
     }
   },
   mounted() {
