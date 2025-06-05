@@ -76,7 +76,9 @@
             justify-self: start;
             align-self: start;
             /* max-width: 40%; */
-            min-width: 40%;
+            min-width: 30%;
+            margin-right: 70px;
+            margin-left: 30px;
             /* width: 40%; */
             aspect-ratio: 4 / 2;
             display: flex;
@@ -432,7 +434,10 @@
             <div id="company-details">
                 <p data-ref="company_details-company.company">company</p>
                 <p data-ref="company_details-company.id_number" style="white-space:nowrap;">number</p>
-                <p data-ref="company_details-company.regon_krs_number" style="white-space:nowrap;">number2</p>
+                <p>
+                    <span style="white-space:nowrap;" data-ref="company_details-company.regon_krs_number" >number2</span>
+                    <span style="white-space:nowrap;" data-ref="company_details-company.regon_number"></span>
+                </p>
                 <p data-ref="company_details-company.website">website</p>
                 <p data-ref="company_details-company.email">email</p>
                 <p data-ref="company_details-company.phone">phone</p>
@@ -442,7 +447,7 @@
                 <div data-ref="company_address-company.city_state_postal">postal</div>
                 <div data-ref="company_address-company.country">Country</div>
                 <div data-ref="company_address-company.bank_name">Bank Name</div>
-                <div data-ref="company_address-company.bank_account">Account #</div>
+                <div data-ref="company_address-company.bank_account" style="white-space:nowrap;">Account #</div>
                 <div data-ref="company_address-company.bank_code">Bank Code</div>
             </div>
         </div>
@@ -451,7 +456,10 @@
                 <p class="entity-issued-to">Faktura wystawiona dla</p>
                 <div data-ref="client_details-client.company">Customer</div>
                 <div data-ref="client_details-client.number">Cnumber</div>
-                <div data-ref="client_details-client.vat_number">cnumber2</div>
+                <div>
+                    <span style="white-space:nowrap;" data-ref="client_details-client.regon_krs_number">number2</span>
+                    <span style="white-space:nowrap;" data-ref="client_details-client.regon_number"></span>
+                </div>
                 <div data-ref="client_details-client.address1">Caddress</div>
                 <div data-ref="client_details-client.city_state_postal">Cpostal</div>
                 <div data-ref="client_details-client.country">Ccountry</div>
@@ -468,28 +476,28 @@
             <div class="entity-details-wrapper">
                 <table id="entity-details" cellspacing="0" dir="ltr">
                     <tr>
-                        <th data-ref="entity_details-invoice.number_label">Numer faktury</th>
-                        <th data-ref="entity_details-invoice.number">INV-20250101</th>
+                        <th data-ref="entity_details-invoice.number_label" style="white-space:nowrap;">Numer faktury</th>
+                        <th data-ref="entity_details-invoice.number" style="white-space:nowrap;">INV-20250101</th>
                     </tr>
                     <tr hidden="1">
-                        <th data-ref="entity_details-invoice.po_number_label">Numer zam&oacute;wienia</th>
-                        <th data-ref="entity_details-invoice.po_number"> </th>
+                        <th data-ref="entity_details-invoice.po_number_label" style="white-space:nowrap;">Numer zam&oacute;wienia</th>
+                        <th data-ref="entity_details-invoice.po_number" style="white-space:nowrap;"> </th>
                     </tr>
                     <tr>
-                        <th data-ref="entity_details-invoice.date_label">Data wystawienia</th>
-                        <th data-ref="entity_details-invoice.date">2025-01-01</th>
+                        <th data-ref="entity_details-invoice.date_label" style="white-space:nowrap;">Data wystawienia</th>
+                        <th data-ref="entity_details-invoice.date" style="white-space:nowrap;">2025-01-01</th>
                     </tr>
                     <tr hidden="1">
-                        <th data-ref="entity_details-invoice.due_date_label">Termin p&#322;atno&#347;ci</th>
-                        <th data-ref="entity_details-invoice.due_date"> </th>
+                        <th data-ref="entity_details-invoice.due_date_label" style="white-space:nowrap;">Termin p&#322;atno&#347;ci</th>
+                        <th data-ref="entity_details-invoice.due_date" style="white-space:nowrap;"> </th>
                     </tr>
                     <tr>
-                        <th data-ref="entity_details-invoice.total_label">Faktura razem</th>
-                        <th data-ref="entity_details-invoice.total">0,00 PLN</th>
+                        <th data-ref="entity_details-invoice.total_label" style="white-space:nowrap;">Faktura razem</th>
+                        <th data-ref="entity_details-invoice.total" style="white-space:nowrap;">0,00 PLN</th>
                     </tr>
                     <tr>
-                        <th data-ref="entity_details-invoice.balance_due_label">Do zap&#322;aty</th>
-                        <th data-ref="entity_details-invoice.balance_due">0,00 PLN</th>
+                        <th data-ref="entity_details-invoice.balance_due_label" style="white-space:nowrap;">Do zap&#322;aty</th>
+                        <th data-ref="entity_details-invoice.balance_due" style="white-space:nowrap;">0,00 PLN</th>
                     </tr>
                     <tr hidden="1">
                         <th data-ref="entity_details-invoice.project_label">Projekt</th>

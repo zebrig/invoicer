@@ -55,10 +55,10 @@ switch ($method) {
 
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
-        $stmt = $pdo->prepare('INSERT INTO customers (name,email,company,agreement,id_number,vat_number,website,address,city,postal_code,country,phone,currency,logo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt = $pdo->prepare('INSERT INTO customers (name,email,company,regon_krs_number,regon_number,agreement,id_number,vat_number,website,address,city,postal_code,country,phone,currency,logo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $stmt->execute([
-            $data['name'], $data['email'], $data['company'], $data['agreement'] ?? null,
-            $data['id_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
+            $data['name'], $data['email'], $data['company'], $data['regon_krs_number'] ?? null, $data['regon_number'] ?? null,
+            $data['agreement'] ?? null, $data['id_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
             $data['address'], $data['city'], $data['postal_code'],
             $data['country'], $data['phone'], $data['currency'], $data['logo'] ?? null,
         ]);
@@ -66,10 +66,10 @@ switch ($method) {
         break;
     case 'PUT':
         $data = json_decode(file_get_contents('php://input'), true);
-        $stmt = $pdo->prepare('UPDATE customers SET name=?,email=?,company=?,agreement=?,id_number=?,vat_number=?,website=?,address=?,city=?,postal_code=?,country=?,phone=?,currency=?,logo=? WHERE id=?');
+        $stmt = $pdo->prepare('UPDATE customers SET name=?,email=?,company=?,regon_krs_number=?,regon_number=?,agreement=?,id_number=?,vat_number=?,website=?,address=?,city=?,postal_code=?,country=?,phone=?,currency=?,logo=? WHERE id=?');
         $stmt->execute([
-            $data['name'], $data['email'], $data['company'], $data['agreement'] ?? null,
-            $data['id_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
+            $data['name'], $data['email'], $data['company'], $data['regon_krs_number'] ?? null, $data['regon_number'] ?? null,
+            $data['agreement'] ?? null, $data['id_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
             $data['address'], $data['city'], $data['postal_code'],
             $data['country'], $data['phone'], $data['currency'], $data['logo'] ?? null, $data['id'],
         ]);

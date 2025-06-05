@@ -19,6 +19,8 @@ CREATE TABLE customers (
     name TEXT,
     email TEXT,
     company TEXT,
+    regon_krs_number TEXT,
+    regon_number TEXT,
     id_number TEXT,
     vat_number TEXT,
     agreement TEXT,
@@ -58,6 +60,7 @@ CREATE TABLE companies (
     company TEXT,
     id_number TEXT,
     regon_krs_number TEXT,
+    regon_number TEXT,
     vat_number TEXT,
     website TEXT,
     email TEXT,
@@ -150,4 +153,22 @@ SQL
     $hash = password_hash(DEFAULT_ADMIN_PASSWORD, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare('INSERT INTO users (username, password, disabled, is_admin) VALUES (?, ?, 0, 1)');
     $stmt->execute([DEFAULT_ADMIN_USERNAME, $hash]);
+}
+
+// Migrate existing tables: ensure CEIDG/KRS (regon_krs_number) and REGON (regon_number) columns exist
+if (!$initDb) {
+    $cols = $pdo->query("PRAGMA table_info(companies)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('regon_krs_number', $cols, true)) {
+        $pdo->exec("ALTER TABLE companies ADD COLUMN regon_krs_number TEXT");
+    }
+    if (!in_array('regon_number', $cols, true)) {
+        $pdo->exec("ALTER TABLE companies ADD COLUMN regon_number TEXT");
+    }
+    $cols = $pdo->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('regon_krs_number', $cols, true)) {
+        $pdo->exec("ALTER TABLE customers ADD COLUMN regon_krs_number TEXT");
+    }
+    if (!in_array('regon_number', $cols, true)) {
+        $pdo->exec("ALTER TABLE customers ADD COLUMN regon_number TEXT");
+    }
 }

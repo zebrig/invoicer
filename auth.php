@@ -24,6 +24,22 @@ function is_admin(): bool {
 	return $flag;
 }
 
+/**
+ * Get the current logged-in user's username.
+ *
+ * @return string
+ */
+function current_username(): string {
+    global $pdo;
+    static $name;
+    if ($name === null) {
+        $stmt = $pdo->prepare('SELECT username FROM users WHERE id = ?');
+        $stmt->execute([$_SESSION['user_id']]);
+        $name = $stmt->fetchColumn() ?: '';
+    }
+    return $name;
+}
+
 // Destroy any legacy PHP session when no auth_token cookie is present
 $token = $_COOKIE['auth_token'] ?? '';
 if ($token === '') {

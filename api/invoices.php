@@ -133,6 +133,10 @@ switch ($method) {
         break;
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
+        // Ensure subtotal, tax and total are stored with 2 decimal places
+        $data['subtotal'] = number_format((float)($data['subtotal'] ?? 0), 2, '.', '');
+        $data['tax']      = number_format((float)($data['tax'] ?? 0), 2, '.', '');
+        $data['total']    = number_format((float)($data['total'] ?? 0), 2, '.', '');
         $stmt = $pdo->prepare(
             'INSERT INTO invoices (
                 customer_id,company_id,invoice_number,date,month_service,status,template,
@@ -199,6 +203,10 @@ switch ($method) {
         break;
     case 'PUT':
         $data = json_decode(file_get_contents('php://input'), true);
+        // Ensure subtotal, tax and total are stored with 2 decimal places
+        $data['subtotal'] = number_format((float)($data['subtotal'] ?? 0), 2, '.', '');
+        $data['tax']      = number_format((float)($data['tax'] ?? 0), 2, '.', '');
+        $data['total']    = number_format((float)($data['total'] ?? 0), 2, '.', '');
         $stmt = $pdo->prepare(
             'UPDATE invoices SET
                 customer_id=?,company_id=?,invoice_number=?,date=?,month_service=?,status=?,template=?,

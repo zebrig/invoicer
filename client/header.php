@@ -60,7 +60,7 @@ require_once __DIR__ . '/../auth.php';
         <li class="nav-item"><a class="nav-link" href="/client/invoices.php">Invoices</a></li>
         <li class="nav-item"><a class="nav-link" href="/client/payments.php">Payments</a></li>
         <li class="nav-item"><a class="nav-link" href="/client/reconciliation.php">Reconciliation</a></li>
-        <li class="nav-item"><a class="nav-link" href="/logout.php">Logout</a></li>
+        <li class="nav-item"><a class="nav-link" href="/logout.php">Logout <small>(<?= htmlspecialchars(current_username()) ?>)</small></a></li>
       </ul>
     </div>
   </div>

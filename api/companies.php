@@ -26,11 +26,11 @@ switch ($method) {
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare(
-            'INSERT INTO companies (name,company,id_number,regon_krs_number,vat_number,website,email,phone,address,city,postal_code,country,bank_name,bank_account,bank_code,currency,logo)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+            'INSERT INTO companies (name,company,id_number,regon_krs_number,regon_number,vat_number,website,email,phone,address,city,postal_code,country,bank_name,bank_account,bank_code,currency,logo)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
         );
         $stmt->execute([
-            $data['name'], $data['company'] ?? null, $data['id_number'] ?? null, $data['regon_krs_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
+            $data['name'], $data['company'] ?? null, $data['id_number'] ?? null, $data['regon_krs_number'] ?? null, $data['regon_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
             $data['email'], $data['phone'], $data['address'], $data['city'], $data['postal_code'], $data['country'],
             $data['bank_name'] ?? null, $data['bank_account'] ?? null, $data['bank_code'] ?? null,
             $data['currency'], $data['logo'] ?? null
@@ -41,11 +41,11 @@ switch ($method) {
         $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare(
             'UPDATE companies
-                SET name=?,company=?,id_number=?,regon_krs_number=?,vat_number=?,website=?,email=?,phone=?,address=?,city=?,postal_code=?,country=?,bank_name=?,bank_account=?,bank_code=?,currency=?,logo=?
+                SET name=?,company=?,id_number=?,regon_krs_number=?,regon_number=?,vat_number=?,website=?,email=?,phone=?,address=?,city=?,postal_code=?,country=?,bank_name=?,bank_account=?,bank_code=?,currency=?,logo=?
               WHERE id=?'
         );
         $stmt->execute([
-            $data['name'], $data['company'] ?? null, $data['id_number'] ?? null, $data['regon_krs_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
+            $data['name'], $data['company'] ?? null, $data['id_number'] ?? null, $data['regon_krs_number'] ?? null, $data['regon_number'] ?? null, $data['vat_number'] ?? null, $data['website'] ?? null,
             $data['email'], $data['phone'], $data['address'], $data['city'], $data['postal_code'], $data['country'],
             $data['bank_name'] ?? null, $data['bank_account'] ?? null, $data['bank_code'] ?? null,
             $data['currency'], $data['logo'] ?? null,

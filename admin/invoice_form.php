@@ -123,11 +123,14 @@ if (isset($invId)) {
           <div class="mb-3"><label class="form-label">Company</label>
             <input v-model="myCompany.company" class="form-control" />
           </div>
-          <div class="mb-3"><label class="form-label">ID Number</label>
+          <div class="mb-3"><label class="form-label">ID/NIP Number</label>
             <input v-model="myCompany.id_number" class="form-control" />
           </div>
-          <div class="mb-3"><label class="form-label">REGON/KRS Number</label>
+          <div class="mb-3"><label class="form-label">CEIDG/KRS Number</label>
             <input v-model="myCompany.regon_krs_number" class="form-control" />
+          </div>
+          <div class="mb-3"><label class="form-label">REGON</label>
+            <input v-model="myCompany.regon_number" class="form-control" />
           </div>
           <div class="mb-3"><label class="form-label">VAT Number</label>
             <input v-model="myCompany.vat_number" class="form-control" />
@@ -374,7 +377,7 @@ createApp({
       invoice: { id: null, customer_id: null, company_id: null, invoice_number: '', date: '', month_service: '', status: 'unpaid', currency: 'USD', vat_rate: 23, items: [] },
       myCompanies: [],
       selectedCompany: null,
-      myCompany: { name: '', company: '', id_number: '', regon_krs_number: '', vat_number: '', website: '', email: '', phone: '', address: '', city: '', postal_code: '', country: '', bank_name: '', bank_account: '', bank_code: '' },
+      myCompany: { name: '', company: '', id_number: '', regon_krs_number: '', regon_number: '', vat_number: '', website: '', email: '', phone: '', address: '', city: '', postal_code: '', country: '', bank_name: '', bank_account: '', bank_code: '' },
       services: [],
       currencies: [],
       templates: <?= json_encode($templates) ?>,

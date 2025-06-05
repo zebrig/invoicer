@@ -122,7 +122,7 @@ createApp({
             date: inv.invoice_date,
             reference: inv.invoice_number,
             description: invoiceDesc,
-            amount: parseFloat(inv.amount),
+            amount: Number(parseFloat(inv.amount).toFixed(2)),
             currency: inv.currency
           });
         });
@@ -131,7 +131,7 @@ createApp({
             date: p.transaction_date,
             reference: 'PAY-' + p.id,
             description: paymentDesc,
-            amount: -parseFloat(p.amount),
+            amount: -Number(parseFloat(p.amount).toFixed(2)),
             currency: p.currency
           });
         });
@@ -152,35 +152,34 @@ createApp({
             bal.toFixed(2) + (tr.currency ? ' ' + tr.currency : '');
           tb.appendChild(row);
         });
-        const html = doc.documentElement.innerHTML;
-        const frame = document.getElementById('stmt-preview-iframe');
-        const frameDoc = frame.contentDocument || frame.contentWindow.document;
-        frameDoc.open(); frameDoc.write(html); frameDoc.close();
-        return;
       }
 
-      const tbody = doc.querySelector('#payments-table tbody');
-      const rowTpl = tbody.querySelector('tr');
-      tbody.innerHTML = '';
-      payments.forEach(p => {
-        const row = rowTpl.cloneNode(true);
-        row.querySelector('[data-ref="payments-table-transaction_date"]').textContent = p.transaction_date;
-        row.querySelector('[data-ref="payments-table-amount"]').textContent = parseFloat(p.amount).toFixed(2) + ' ' + p.currency;
-        row.querySelector('[data-ref="payments-table-sender"]').textContent = p.sender;
-        row.querySelector('[data-ref="payments-table-title"]').textContent = p.title;
-        tbody.appendChild(row);
-      });
+      if (doc.querySelector('#payments-table')) {
+        const tbody = doc.querySelector('#payments-table tbody');
+        const rowTpl = tbody.querySelector('tr');
+        tbody.innerHTML = '';
+        payments.forEach(p => {
+          const row = rowTpl.cloneNode(true);
+          row.querySelector('[data-ref="payments-table-transaction_date"]').textContent = p.transaction_date;
+          row.querySelector('[data-ref="payments-table-amount"]').textContent = parseFloat(p.amount).toFixed(2) + ' ' + p.currency;
+          row.querySelector('[data-ref="payments-table-sender"]').textContent = p.sender;
+          row.querySelector('[data-ref="payments-table-title"]').textContent = p.title;
+          tbody.appendChild(row);
+        });
+      }
 
-      const invTbody = doc.querySelector('#invoices-table tbody');
-      const invRowTpl = invTbody.querySelector('tr');
-      invTbody.innerHTML = '';
-      invoices.forEach(inv => {
-        const row = invRowTpl.cloneNode(true);
-        row.querySelector('[data-ref="invoices-table-date"]').textContent = inv.invoice_date;
-        row.querySelector('[data-ref="invoices-table-number"]').textContent = inv.invoice_number;
-        row.querySelector('[data-ref="invoices-table-amount"]').textContent = parseFloat(inv.amount).toFixed(2) + ' ' + inv.currency;
-        invTbody.appendChild(row);
-      });
+      if (doc.querySelector('#invoices-table')) {
+        const invTbody = doc.querySelector('#invoices-table tbody');
+        const invRowTpl = invTbody.querySelector('tr');
+        invTbody.innerHTML = '';
+        invoices.forEach(inv => {
+          const row = invRowTpl.cloneNode(true);
+          row.querySelector('[data-ref="invoices-table-date"]').textContent = inv.invoice_date;
+          row.querySelector('[data-ref="invoices-table-number"]').textContent = inv.invoice_number;
+          row.querySelector('[data-ref="invoices-table-amount"]').textContent = parseFloat(inv.amount).toFixed(2) + ' ' + inv.currency;
+          invTbody.appendChild(row);
+        });
+      }
 
       const totalInvoices = invoices.reduce((sum, i) => sum + parseFloat(i.amount), 0);
       const totalPayments = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);

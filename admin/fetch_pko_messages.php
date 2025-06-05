@@ -175,7 +175,7 @@ $graphToken = getAccessToken($provider);
 if (PHP_SAPI !== 'cli') {
     include ROOT_DIR_PATH . '/admin/header.php';
     echo '<h1>Fetch PKO Messages</h1>';
-    echo "<p><a href='/payments.php' class='btn btn-secondary'>Back to payments</a></p>";
+    echo "<p><a href='/admin/payments.php' class='btn btn-secondary'>Back to payments</a></p>";
     echo '<pre>';
 }
 
@@ -510,6 +510,6 @@ echo "\nProcessed {$totalProcessed} emails: inserted {$insertedCount}, skipped {
 
 if (PHP_SAPI !== 'cli') {
     echo '</pre>';
-    echo "<p><a href='/payments.php' class='btn btn-secondary'>Back to payments</a></p>";
+    echo "<p><a href='/admin/payments.php' class='btn btn-secondary'>Back to payments</a></p>";
     include ROOT_DIR_PATH. '/admin/footer.php';
 }

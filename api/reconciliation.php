@@ -3,6 +3,27 @@ require_once __DIR__ . '/../auth.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 
+// Handle marking covered invoices as paid
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'mark_paid') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $ids = $input['invoice_ids'] ?? [];
+    if (!is_array($ids) || empty($ids)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'No invoice IDs provided']);
+        exit;
+    }
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("UPDATE invoices SET status = 'paid' WHERE id IN ($placeholders)");
+    try {
+        $stmt->execute($ids);
+        echo json_encode(['success' => true, 'marked' => $stmt->rowCount()]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 $customerId = isset($_GET['customer_id']) ? (int)$_GET['customer_id'] : null;
     $rawStart = $_GET['start_date'] ?? '';
     $rawEnd = $_GET['end_date'] ?? '';
@@ -68,7 +89,7 @@ $customerId = isset($_GET['customer_id']) ? (int)$_GET['customer_id'] : null;
   $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   $stmt2 = $pdo->prepare(
-    'SELECT date AS invoice_date, invoice_number, total AS amount, currency'
+    'SELECT id, date AS invoice_date, invoice_number, total AS amount, currency, status'
   . ' FROM invoices'
   . ' WHERE customer_id = ? AND date BETWEEN ? AND ?'
   . ' ORDER BY date ASC'
