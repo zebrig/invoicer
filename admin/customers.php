@@ -31,16 +31,16 @@
         <td>
           <div class="btn-group-vertical">
             <a :href="'invoices.php?customer_id=' + c.id" class="btn btn-sm btn-secondary" @click.stop title="Invoices">
-              <i class="bi bi-file-text"></i>Invoices
+              <i class="bi bi-file-text"></i> Invoices
             </a>
             <button class="btn btn-sm btn-outline-primary" @click.stop="copyCustomer(c)" title="Copy">
-              <i class="bi bi-clipboard"></i>Copy
+              <i class="bi bi-clipboard"></i> Copy
             </button>
             <button class="btn btn-sm btn-warning" @click.stop="edit(c)" title="Edit">
-              <i class="bi bi-pencil"></i>Edit
+              <i class="bi bi-pencil"></i> Edit
             </button>
             <button v-if="c.invoice_count === 0" class="btn btn-sm btn-danger" @click.stop="remove(c.id)" title="Delete">
-              <i class="bi bi-trash"></i>Delete
+              <i class="bi bi-trash"></i> Delete
             </button>
           </div>
         </td>

@@ -33,13 +33,13 @@
         <td>
           <div class="btn-group-vertical">
             <button class="btn btn-sm btn-warning" @click.stop="edit(c)" title="Edit">
-              <i class="bi bi-pencil me-1"></i>Edit
+              <i class="bi bi-pencil me-1"></i> Edit
             </button>
             <button class="btn btn-sm btn-outline-primary" @click.stop="copyCompany(c)" title="Copy">
-              <i class="bi bi-clipboard me-1"></i>Copy
+              <i class="bi bi-clipboard me-1"></i> Copy
             </button>
             <button v-if="c.invoice_count === 0" class="btn btn-sm btn-danger" @click.stop="remove(c.id)" title="Delete">
-              <i class="bi bi-trash me-1"></i>Delete
+              <i class="bi bi-trash me-1"></i> Delete
             </button>
           </div>
         </td>

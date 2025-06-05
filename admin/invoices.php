@@ -37,13 +37,13 @@
                 class="btn btn-sm btn-secondary"
                 @click.stop
                 title="View/Edit">
-                <i class="bi bi-pencil me-1"></i>View/Edit
+                <i class="bi bi-pencil me-1"></i> View/Edit
               </a>
               <button
                 @click.stop="copyInvoice(inv)"
                 class="btn btn-sm btn-outline-primary"
                 title="Copy">
-                <i class="bi bi-clipboard me-1"></i>Copy
+                <i class="bi bi-clipboard me-1"></i> Copy
               </button>
             </div>
           </td>
