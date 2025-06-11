@@ -24,6 +24,7 @@
         <th>Bank Name</th>
         <th>Bank Account #</th>
         <th>Bank Code</th>
+        <th>Payment Unique String</th>
       </tr>
     </thead>
     <tbody>
@@ -62,6 +63,7 @@
         <td>{{ c.bank_name }}</td>
         <td>{{ c.bank_account }}</td>
         <td>{{ c.bank_code }}</td>
+        <td>{{ c.payment_unique_string }}</td>
 
       </tr>
     </tbody>
@@ -97,6 +99,7 @@
             <div class="mb-3"><label class="form-label">Bank Name</label><input v-model="form.bank_name" class="form-control" /></div>
             <div class="mb-3"><label class="form-label">Bank Account #</label><input v-model="form.bank_account" class="form-control" /></div>
             <div class="mb-3"><label class="form-label">Bank Code</label><input v-model="form.bank_code" class="form-control" /></div>
+            <div class="mb-3"><label class="form-label">Payment Unique String</label><input v-model="form.payment_unique_string" class="form-control" /></div>
             <div class="mb-3"><label class="form-label">Logo</label><input ref="logoInput" type="file" accept=".png,.svg,.gif" @change="onLogoChange" class="form-control" /></div>
             <div class="mb-3" v-if="form.logo">
               <label class="form-label">Current Logo</label>
@@ -149,6 +152,7 @@
           bank_name: '',
           bank_account: '',
           bank_code: '',
+          payment_unique_string: '',
           currency: this.currencies[0],
           logo: '',
           invoice_count: 0
@@ -201,8 +205,8 @@
           event.target.value = null;
           return;
         }
-        if (file.size > 10 * 1024) {
-          alert('Logo must be 10KB or smaller');
+        if (file.size > 15 * 1024) {
+          alert('Logo must be 15KB or smaller');
           event.target.value = null;
           return;
         }

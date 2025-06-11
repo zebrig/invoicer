@@ -56,21 +56,26 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="p in filteredPayments" :key="p.id">
-        <td>{{ p.received_at }}</td>
-        <td>{{ p.transaction_date }}</td>
-        <td>{{ p.account_number }}</td>
-        <td>{{ formatCurrency(p.amount, p.currency) }}</td>
-        <td>{{ p.currency }}</td>
-        <td>{{ p.sender }}</td>
-        <td>{{ p.title }}</td>
-        <td>
-          <select :value="p.customer_id" @change="assignCustomer(p, $event.target.value)" class="form-select form-select-sm">
-            <option value="">--</option>
-            <option v-for="c in customersFor(p)" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
-        </td>
-      </tr>
+      <template v-for="group in groupedPayments" :key="group.month">
+        <tr class="table-secondary">
+          <td colspan="8">{{ group.month }}</td>
+        </tr>
+        <tr v-for="p in group.items" :key="p.id">
+          <td>{{ p.received_at }}</td>
+          <td>{{ p.transaction_date }}</td>
+          <td>{{ p.account_number }}</td>
+          <td>{{ formatCurrency(p.amount, p.currency) }}</td>
+          <td>{{ p.currency }}</td>
+          <td>{{ p.sender }}</td>
+          <td>{{ p.title }}</td>
+          <td>
+            <select :value="p.customer_id" @change="assignCustomer(p, $event.target.value)" class="form-select form-select-sm">
+              <option value="">--</option>
+              <option v-for="c in customersFor(p)" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </td>
+        </tr>
+      </template>
     </tbody>
   </table>
   <div class="mt-2">
@@ -194,6 +199,17 @@ createApp({
         }
         return true;
       });
+    },
+    groupedPayments() {
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const map = new Map();
+      this.filteredPayments.forEach(p => {
+        const d = new Date(p.transaction_date);
+        const label = months[d.getMonth()] + ' ' + d.getFullYear();
+        if (!map.has(label)) map.set(label, []);
+        map.get(label).push(p);
+      });
+      return Array.from(map, ([month, items]) => ({ month, items }));
     },
     totalsByCurrency() {
       return this.filteredPayments.reduce((acc, p) => {

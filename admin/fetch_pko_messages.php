@@ -21,14 +21,24 @@ if (php_sapi_name() !== 'cli') {
  * Usage:
  *   php fetch_pko_messages.php
  */
-
+require '../config.php';
 require ROOT_DIR_PATH.'/vendor/autoload.php';
-require ROOT_DIR_PATH.'/config.php';
 require_once ROOT_DIR_PATH . '/db.php';
 
 // Ensure STDERR is defined for error output (so fwrite(STDERR...) works in web & CLI)
 if (!defined('STDERR')) {
     define('STDERR', fopen('php://stderr', 'w'));
+}
+
+// Determine user_id and ip_address for change log entries
+$logUserId = null;
+$logIpAddress = null;
+if (PHP_SAPI === 'cli') {
+    $cliUser = get_current_user();
+    $logIpAddress = 'cli:' . ($cliUser ?: '');
+} else {
+    $logUserId = $_SESSION['user_id'] ?? null;
+    $logIpAddress = $_SERVER['REMOTE_ADDR'] ?? null;
 }
 
 // Ensure table for storing PKO payment notifications exists (create or migrate schema)
@@ -141,8 +151,58 @@ function saveToken(AccessTokenInterface $accessToken): void {
 
 /**
  * Obtain a valid OAuth access token, refreshing or requesting authorization if needed.
- */
+*/
 function getAccessToken(Azure $provider): string {
+    $token = loadToken();
+
+    if ($token instanceof AccessTokenInterface && !$token->hasExpired()) {
+        return $token->getToken();
+    }
+
+    if ($token instanceof AccessTokenInterface && $token->hasExpired() && $token->getRefreshToken()) {
+        $newToken = $provider->getAccessToken('refresh_token', [
+            'refresh_token' => $token->getRefreshToken()
+        ]);
+        saveToken($newToken);
+        return $newToken->getToken();
+    }
+
+    // No valid token — start authorization flow
+    $authUrl = $provider->getAuthorizationUrl();
+
+    if (php_sapi_name() === 'cli') {
+        // CLI flow
+        echo "Open the following URL in your browser and authorize the application:\n$authUrl\n\n";
+        echo "Enter the full redirect URL after authorization: ";
+        $handle = fopen('php://stdin', 'r');
+        $redirectResponse = trim(fgets($handle));
+        fclose($handle);
+
+        parse_str(parse_url($redirectResponse, PHP_URL_QUERY), $params);
+        if (empty($params['code'])) {
+            fwrite(STDERR, "Authorization code not found in response URL.\n");
+            exit(1);
+        }
+    } else {
+        // Web flow
+        if (!isset($_GET['code'])) {
+            header('Location: ' . $authUrl);
+            exit;
+        }
+        $params = $_GET;
+    }
+
+    // Exchange code for token
+    $newToken = $provider->getAccessToken('authorization_code', [
+        'code' => $params['code']
+    ]);
+    saveToken($newToken);
+    return $newToken->getToken();
+}
+
+
+
+/*function getAccessToken(Azure $provider): string {
     $token = loadToken();
     if ($token instanceof AccessTokenInterface && !$token->hasExpired()) {
         return $token->getToken();
@@ -168,7 +228,7 @@ function getAccessToken(Azure $provider): string {
     saveToken($newToken);
     return $newToken->getToken();
 }
-
+*/
 // Main execution
 $graphToken = getAccessToken($provider);
 
@@ -286,7 +346,9 @@ $insertedCount = 0;
 $skippedCount  = 0;
 $nonBankCount  = 0;
 
+// Decode messages and track newly inserted payment IDs
 $messages = json_decode((string) $response->getBody(), true)['value'] ?? [];
+$newPaymentIds = [];
 
 // Process each message: fetch raw MIME, extract payment data, store and move to processed folder
 foreach ($messages as $msg) {
@@ -449,6 +511,7 @@ foreach ($messages as $msg) {
         $sender,
         $title,
     ]);
+    $newPaymentIds[] = $pdo->lastInsertId();
 
     $insertedCount++;
     $reportRows[] = [
@@ -471,6 +534,70 @@ foreach ($messages as $msg) {
         ]);
     } catch (GuzzleRequestException $e) {
         fwrite(STDERR, "Failed to move message {$msgId}: " . $e->getMessage() . "\n");
+    }
+}
+
+// Auto-assign payments based on customer payment_unique_string and currency
+if (!empty($newPaymentIds)) {
+    $custStmt = $pdo->prepare('SELECT id, payment_unique_string, currency FROM customers WHERE payment_unique_string IS NOT NULL');
+    $custStmt->execute();
+    $customers = $custStmt->fetchAll(PDO::FETCH_ASSOC);
+    $paymentStmt = $pdo->prepare('SELECT id, currency, sender, title, customer_id FROM pko_payments WHERE id = ?');
+    $updateStmt = $pdo->prepare('UPDATE pko_payments SET customer_id = ? WHERE id = ?');
+    $logAssignStmt = $pdo->prepare('INSERT INTO change_log (payment_id,event_type,prev_value,new_value,reason,user_id,ip_address) VALUES (?,?,?,?,?,?,?)');
+    foreach ($newPaymentIds as $pid) {
+        $paymentStmt->execute([$pid]);
+        $p = $paymentStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$p) {
+            continue;
+        }
+        $prevCust = $p['customer_id'];
+        foreach ($customers as $cust) {
+            if ($cust['currency'] === $p['currency'] &&
+               (stripos($p['sender'], $cust['payment_unique_string']) !== false || stripos($p['title'], $cust['payment_unique_string']) !== false)) {
+                $updateStmt->execute([$cust['id'], $pid]);
+                if ($prevCust != $cust['id']) {
+                $logAssignStmt->execute([$pid, 'payment_assignment', $prevCust, $cust['id'], 'automatic', $logUserId, $logIpAddress]);
+                }
+                break;
+            }
+        }
+    }
+}
+
+// Auto mark invoices as paid/unpaid per reconciliation algorithm and log changes
+{
+    $customersToProcess = array_unique(array_filter(array_map(fn($pid) =>
+        $pdo->query('SELECT customer_id FROM pko_payments WHERE id=' . (int)$pid)->fetchColumn(), $newPaymentIds)));
+    $invoiceUpdate = $pdo->prepare('UPDATE invoices SET status = ? WHERE id = ?');
+    $stmtPrevStatus = $pdo->prepare('SELECT status FROM invoices WHERE id = ?');
+    $logStatusStmt = $pdo->prepare('INSERT INTO change_log (invoice_id,event_type,prev_value,new_value,reason,balance_before,balance_after,user_id,ip_address) VALUES (?,?,?,?,?,?,?,?,?)');
+    foreach ($customersToProcess as $cid) {
+        if (!$cid) {
+            continue;
+        }
+        $stmtInv = $pdo->prepare('SELECT id, total AS amount FROM invoices WHERE customer_id = ? ORDER BY date ASC');
+        $stmtInv->execute([$cid]);
+        $invoices = $stmtInv->fetchAll(PDO::FETCH_ASSOC);
+        $stmtPay = $pdo->prepare('SELECT amount FROM pko_payments WHERE customer_id = ? ORDER BY transaction_date ASC');
+        $stmtPay->execute([$cid]);
+        $payments = $stmtPay->fetchAll(PDO::FETCH_COLUMN);
+        $remaining = array_sum($payments);
+        foreach ($invoices as $inv) {
+            $amt = round((float)$inv['amount'], 2);
+            $prevBalance = $remaining;
+            $newStatus = $remaining >= $amt ? 'paid' : 'unpaid';
+            $newBalance = $remaining >= $amt ? $remaining - $amt : $remaining;
+            $stmtPrevStatus->execute([$inv['id']]);
+            $prevStatus = $stmtPrevStatus->fetchColumn();
+            if ($prevStatus !== $newStatus) {
+                $invoiceUpdate->execute([$newStatus, $inv['id']]);
+                $logStatusStmt->execute([$inv['id'], 'status_change', $prevStatus, $newStatus, 'automatic', $prevBalance, $newBalance, $logUserId, $logIpAddress]);
+            }
+            if ($remaining >= $amt) {
+                $remaining -= $amt;
+            }
+        }
     }
 }
 

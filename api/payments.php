@@ -17,8 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['error' => 'Missing payment id']);
         exit;
     }
+    // Log manual customer assignment for the payment
+    $prevStmt = $pdo->prepare('SELECT customer_id FROM pko_payments WHERE id = ?');
+    $prevStmt->execute([$id]);
+    $prevCust = $prevStmt->fetchColumn();
     $stmt = $pdo->prepare('UPDATE pko_payments SET customer_id = ? WHERE id = ?');
     $stmt->execute([$customerId, $id]);
+    if ($prevCust != $customerId) {
+        $log = $pdo->prepare('INSERT INTO change_log (payment_id,event_type,prev_value,new_value,reason,user_id,ip_address) VALUES (?,?,?,?,?,?,?)');
+        $log->execute([$id, 'payment_assignment', $prevCust, $customerId, 'manual', $_SESSION['user_id'], $_SERVER['REMOTE_ADDR']]);
+    }
     echo json_encode(['success' => true]);
     exit;
 }

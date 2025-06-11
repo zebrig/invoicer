@@ -7,14 +7,43 @@
   </div>
   <h1 v-if="allMode">All invoices</h1>
   <h1 v-else>Invoices for {{ customer.name }}</h1>
-  <button v-if="allMode" @click="openCustomerModal" class="btn btn-primary mb-2">Create Invoice</button>
-  <button v-if="allMode" @click="openBulkModal" class="btn btn-secondary mb-2 ms-2">Bulk Copy Invoices</button>
-  <button v-if="!allMode" @click="newInvoice" class="btn btn-primary mb-2">New Invoice</button>
+  <button v-if="allMode" @click="openCustomerModal" class="btn btn-primary mb-2"><i class="bi bi-file-earmark-plus"></i> Create Invoice</button>
+  <button v-if="allMode" @click="openBulkModal" class="btn btn-secondary mb-2 ms-2"><i class="bi bi-copy"></i> Bulk Copy Invoices</button>
+  <button v-if="!allMode" @click="newInvoice" class="btn btn-primary mb-2"><i class="bi bi-file-earmark-plus"></i> New Invoice</button>
+  <a class="btn btn-success mb-2 ms-2" href="/admin/send_invoices.php"><i class="bi bi-envelope-plus"></i> Send Invoices</a>
+
+  <div class="row mb-3">
+    <div class="col-auto">
+      <label class="form-label">Start Date</label>
+      <input type="date" v-model="startDate" class="form-control">
+    </div>
+    <div class="col-auto">
+      <label class="form-label">End Date</label>
+      <input type="date" v-model="endDate" class="form-control">
+    </div>
+    <div class="col-auto">
+      <label class="form-label">Status</label>
+      <select v-model="statusFilter" class="form-select">
+        <option value="">All</option>
+        <option value="paid">Paid</option>
+        <option value="unpaid">Unpaid</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label">Search</label>
+      <input type="text" v-model="searchQuery" class="form-control" placeholder="Filter invoices...">
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-outline-secondary" @click="clearDateFilter()">Clear</button>
+    </div>
+  </div>
+
   <table class="table table-bordered table-striped table-hover">
     <thead>
       <tr>
         <th>Date</th>
         <th>Invoice #</th>
+        <th v-if="allMode">Customer</th>
         <th>Actions</th>
         <th>Status</th>
         <th>Total</th>
@@ -26,11 +55,12 @@
     <tbody>
       <template v-for="group in groupedInvoices" :key="group.month">
         <tr class="table-secondary">
-          <td colspan="8">{{ group.month }}</td>
+          <td colspan="9">{{ group.month }}</td>
         </tr>
         <tr v-for="inv in group.items" :key="inv.id" @click="goToInvoice(inv)" style="cursor:pointer">
           <td>{{ inv.date }}</td>
           <td>{{ inv.invoice_number }}</td>
+          <td v-if="allMode">{{ findCustomerName(inv.customer_id) }}</td>
           <td>
             <div class="btn-group-vertical">
               <a
@@ -54,7 +84,12 @@
               </button>
             </div>
           </td>
-          <td>{{ inv.status }}</td>
+          <td>
+            <select v-model="inv.status" class="form-select form-select-sm" @click.stop @change.stop="onTableStatusChange(inv)">
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
+            </select>
+          </td>
           <td>{{ formatCurrency(inv.total, inv.currency) }}</td>
           <td>{{ inv.currency }}</td>
           <td>
@@ -62,9 +97,8 @@
               v-if="inv.signed_file"
               :href="'/view_signed_pdf.php?file=' + encodeURIComponent(inv.signed_file)"
               target="_blank"
-              class="btn btn-sm btn-outline-secondary"
-              @click.stop
-              title="PDF">
+              class="btn btn-sm btn-outline-secondary file-viewer"
+              title="PDF" @click.stop>
               <i class="bi bi-file-earmark-pdf me-1"></i>PDF
             </a>
           </td>
@@ -73,9 +107,8 @@
               v-if="inv.history.length"
               :href="'/admin/view_invoice_history.php?file=' + encodeURIComponent(inv.history[0])"
               target="_blank"
-              class="btn btn-sm btn-outline-secondary"
-              @click.stop
-              title="History">
+              class="btn btn-sm btn-outline-secondary file-viewer"
+              title="History" @click.stop>
               <i class="bi bi-clock-history me-1"></i><span>{{ extractSaveDatetime(inv.history[0]) }}</span>
             </a>
           </td>
@@ -83,33 +116,122 @@
       </template>
     </tbody>
   </table>
-  <p>Total invoices: {{ invoices.length }}</p>
-  <div class="row mb-3">
-    <div class="col-md-4">
-      <p>Paid invoices: {{ countPaid }}</p>
-      <p>Unpaid invoices: {{ countUnpaid }}</p>
+
+  <div class="mb-4">
+    <h2>Invoice Summary</h2>
+    <div class="row">
+      <div class="col-md-4">
+        <h5>Invoice Counts</h5>
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>All</th>
+              <th v-for="currency in Object.keys(countByCurrency)" :key="currency">
+                {{ currency }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>Total</th>
+              <td>{{ countTotal }}</td>
+              <td v-for="(cnt, currency) in countByCurrency" :key="currency">
+                {{ cnt }}
+              </td>
+            </tr>
+            <tr>
+              <th>Paid</th>
+              <td>{{ countPaid }}</td>
+              <td v-for="currency in Object.keys(countByCurrency)" :key="currency">
+                {{ countPaidByCurrency[currency] || 0 }}
+              </td>
+            </tr>
+            <tr>
+              <th>Unpaid</th>
+              <td>{{ countUnpaid }}</td>
+              <td v-for="currency in Object.keys(countByCurrency)" :key="currency">
+                {{ countUnpaidByCurrency[currency] || 0 }}
+              </td>
+            </tr>
+            <tr>
+              <th>% Paid</th>
+              <td>{{ countTotal ? ((countPaid / countTotal) * 100).toFixed(1) + '%' : '-' }}</td>
+              <td v-for="(cnt, currency) in countByCurrency" :key="currency">
+                {{ cnt ? ((countPaidByCurrency[currency] || 0) / cnt * 100).toFixed(1) + '%' : '-' }}
+              </td>
+            </tr>
+            <tr>
+              <th>% Unpaid</th>
+              <td>{{ countTotal ? ((countUnpaid / countTotal) * 100).toFixed(1) + '%' : '-' }}</td>
+              <td v-for="(cnt, currency) in countByCurrency" :key="currency">
+                {{ cnt ? ((countUnpaidByCurrency[currency] || 0) / cnt * 100).toFixed(1) + '%' : '-' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-4">
+        <h5>Invoice Amounts</h5>
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th v-for="currency in Object.keys(totalByCurrency)" :key="currency">
+                {{ currency }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>Total</th>
+              <td v-for="(sum, currency) in totalByCurrency" :key="currency">
+                {{ formatCurrency(sum, currency) }}
+              </td>
+            </tr>
+            <tr>
+              <th>Paid</th>
+              <td v-for="(sum, currency) in totalByCurrency" :key="currency">
+                {{ formatCurrency(totalPaidByCurrency[currency] || 0, currency) }}
+              </td>
+            </tr>
+            <tr>
+              <th>Unpaid</th>
+              <td v-for="(sum, currency) in totalByCurrency" :key="currency">
+                {{ formatCurrency(totalUnpaidByCurrency[currency] || 0, currency) }}
+              </td>
+            </tr>
+            <tr>
+              <th>% Paid</th>
+              <td v-for="(sum, currency) in totalByCurrency" :key="currency">
+                {{ sum ? ((totalPaidByCurrency[currency] || 0) / sum * 100).toFixed(1) + '%' : '-' }}
+              </td>
+            </tr>
+            <tr>
+              <th>% Unpaid</th>
+              <td v-for="(sum, currency) in totalByCurrency" :key="currency">
+                {{ sum ? ((totalUnpaidByCurrency[currency] || 0) / sum * 100).toFixed(1) + '%' : '-' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="col-md-4">
-      <p>Total all invoices:</p>
-      <ul class="list-unstyled mb-0">
-        <li v-for="(sum, currency) in totalByCurrency" :key="currency">
-          {{ currency }}: {{ formatCurrency(sum, currency) }}
-        </li>
-      </ul>
-    </div>
-    <div class="col-md-4">
-      <p>Total paid invoices:</p>
-      <ul class="list-unstyled mb-0">
-        <li v-for="(sum, currency) in totalPaidByCurrency" :key="currency">
-          {{ currency }}: {{ formatCurrency(sum, currency) }}
-        </li>
-      </ul>
-      <p class="mt-2">Total unpaid invoices:</p>
-      <ul class="list-unstyled mb-0">
-        <li v-for="(sum, currency) in totalUnpaidByCurrency" :key="currency">
-          {{ currency }}: {{ formatCurrency(sum, currency) }}
-        </li>
-      </ul>
+    <div class="row">
+      <h5>Charts</h5>
+      <div class="col-md-6">
+        <h6 class="text-center">Counts: Paid & Unpaid by Currency</h6>
+        <canvas id="countChart" style="width:100%; max-height:200px;"></canvas>
+      </div>
+      <div class="col-md-6">
+        <h6 class="text-center">Amounts: Paid vs Unpaid per Currency</h6>
+        <div class="row">
+          <div class="col-6 mb-3" v-for="currency in Object.keys(totalByCurrency)" :key="currency">
+            <h6 class="text-center">{{ currency }}</h6>
+            <canvas :id="'amountChart-' + currency" style="width:100%; max-height:200px;"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -198,9 +320,9 @@
 
 </div>
 <script>
-  const {
-    createApp
-  } = Vue;
+  const { createApp } = Vue;
+  let countChart = null;
+  const amountCharts = {};
   createApp({
     data() {
       return {
@@ -212,8 +334,18 @@
         allMode: false,
         customers: [],
         selectedCustomerId: '',
-        bulk: { step: 1, sourceMonth: '', sourceInvoices: [], selectedBulkInvoices: [], newDate: '' },
-        currentReturnTo: window.location.pathname + window.location.search
+        bulk: {
+          step: 1,
+          sourceMonth: '',
+          sourceInvoices: [],
+          selectedBulkInvoices: [],
+          newDate: ''
+        },
+        currentReturnTo: window.location.pathname + window.location.search,
+        startDate: '',
+        endDate: '',
+        statusFilter: '',
+        searchQuery: ''
       };
     },
     methods: {
@@ -239,6 +371,7 @@
         fetch(url)
           .then(r => r.json()).then(data => {
             this.invoices = data;
+            this.invoices.forEach(inv => inv.prevStatus = inv.status);
           });
       },
       newInvoice() {
@@ -273,11 +406,36 @@
       },
       async deleteInvoice(inv) {
         if (!confirm(`Delete invoice ${inv.invoice_number}? This cannot be undone.`)) return;
-        await fetch(`/api/invoices.php?id=${inv.id}`, { method: 'DELETE' });
+        await fetch(`/api/invoices.php?id=${inv.id}`, {
+          method: 'DELETE'
+        });
         this.fetch();
       },
+      onTableStatusChange(inv) {
+        const newStatus = inv.status;
+        const prev = inv.prevStatus;
+        if (newStatus === prev) return;
+        if (!confirm(`Mark invoice ${inv.invoice_number} as ${newStatus}?`)) {
+          inv.status = prev;
+          return;
+        }
+        fetch('/api/invoice_status.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: inv.id, status: newStatus })
+        })
+          .then(r => r.json())
+          .then(() => { inv.prevStatus = newStatus; })
+          .catch(() => { inv.status = prev; });
+      },
       openBulkModal() {
-        this.bulk = { step: 1, sourceMonth: '', sourceInvoices: [], selectedBulkInvoices: [], newDate: '' };
+        this.bulk = {
+          step: 1,
+          sourceMonth: '',
+          sourceInvoices: [],
+          selectedBulkInvoices: [],
+          newDate: ''
+        };
         new bootstrap.Modal(this.$refs.bulkModal).show();
       },
       closeBulkModal() {
@@ -354,7 +512,9 @@
           };
           await fetch('/api/invoices.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json'
+            },
             body: JSON.stringify(payload)
           });
         }
@@ -364,13 +524,132 @@
       findCustomerName(id) {
         const c = this.customers.find(x => x.id === id);
         return c ? c.name : '';
+      },
+      renderCountChart() {
+        const ctx = document.getElementById('countChart').getContext('2d');
+        const currencies = Object.keys(this.totalByCurrency);
+        const pieLabels = [];
+        const pieData = [];
+        const pieBg = [];
+        const hueStep = 360 / currencies.length;
+        const offset = hueStep / 3;
+        currencies.forEach((currency, idx) => {
+          const invs = this.filteredInvoices.filter(inv => inv.currency === currency);
+          const paidCount = invs.filter(inv => inv.status === 'paid').length;
+          const unpaidCount = invs.filter(inv => inv.status !== 'paid').length;
+          const hueBase = idx * hueStep;
+          const paidHue = hueBase;
+          const unpaidHue = (hueBase + offset) % 360;
+          pieLabels.push(`${currency} Paid`);
+          pieData.push(paidCount);
+          pieBg.push(`hsl(${paidHue}, 70%, 50%)`);
+          pieLabels.push(`${currency} Unpaid`);
+          pieData.push(unpaidCount);
+          pieBg.push(`hsl(${unpaidHue}, 70%, 50%)`);
+        });
+        const totalCount = pieData.reduce((a, b) => a + b, 0);
+        if (!countChart) {
+          countChart = new Chart(ctx, {
+            type: 'pie',
+            data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: pieBg }] },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                  callbacks: {
+                    label: context => {
+                      const value = context.parsed;
+                      const perc = totalCount ? (value / totalCount * 100).toFixed(1) : '0';
+                      const label = context.chart.data.labels[context.dataIndex];
+                      return `${label}: ${value} (${perc}%)`;
+                    }
+                  }
+                },
+              }
+            }
+          });
+        } else {
+          countChart.data.labels = pieLabels;
+          countChart.data.datasets[0].data = pieData;
+          countChart.data.datasets[0].backgroundColor = pieBg;
+          countChart.update();
+        }
+      },
+      renderAmountChart() {
+        const currencies = Object.keys(this.totalByCurrency);
+        currencies.forEach(currency => {
+          const paid = this.totalPaidByCurrency[currency] || 0;
+          const unpaid = this.totalUnpaidByCurrency[currency] || 0;
+          const ctx = document.getElementById(`amountChart-${currency}`).getContext('2d');
+          if (!amountCharts[currency]) {
+            amountCharts[currency] = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: [currency],
+                datasets: [
+                  {
+                    label: 'Paid',
+                    data: [paid],
+                    backgroundColor: '#28a745'
+                  },
+                  {
+                    label: 'Unpaid',
+                    data: [unpaid],
+                    backgroundColor: '#dc3545'
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } },
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      label: context => {
+                        const value = context.parsed.y;
+                        const total = paid + unpaid;
+                        const perc = total ? (value / total * 100).toFixed(1) : '0';
+                        return `${context.dataset.label} ${context.label}: ${value} (${perc}%)`;
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          } else {
+            amountCharts[currency].data.datasets[0].data = [paid];
+            amountCharts[currency].data.datasets[1].data = [unpaid];
+            amountCharts[currency].update();
+          }
+        });
+      },
+      clearDateFilter() {
+        this.startDate = '';
+        this.endDate = '';
       }
     },
     computed: {
+      filteredInvoices() {
+        return this.invoices.filter(inv => {
+          if (this.startDate && inv.date < this.startDate) return false;
+          if (this.endDate && inv.date > this.endDate) return false;
+          if (this.statusFilter === 'paid' && inv.status !== 'paid') return false;
+          if (this.statusFilter === 'unpaid' && inv.status === 'paid') return false;
+            if (this.searchQuery) {
+            const q = this.searchQuery.trim().toLowerCase();
+            const haystack = `${inv.invoice_number} ${inv.status} ${inv.currency} ${this.findCustomerName(inv.customer_id)}`.toLowerCase();
+            if (!haystack.includes(q)) return false;
+          }
+          return true;
+        });
+      },
       groupedInvoices() {
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const map = new Map();
-        this.invoices.forEach(inv => {
+        this.filteredInvoices.forEach(inv => {
           const d = new Date(inv.date);
           const label = months[d.getMonth()] + ' ' + d.getFullYear();
           if (!map.has(label)) map.set(label, []);
@@ -382,31 +661,69 @@
         }));
       },
       countPaid() {
-        return this.invoices.filter(inv => inv.status === 'paid').length;
+        return this.filteredInvoices.filter(inv => inv.status === 'paid').length;
       },
       countUnpaid() {
-        return this.invoices.filter(inv => inv.status !== 'paid').length;
+        return this.filteredInvoices.filter(inv => inv.status !== 'paid').length;
+      },
+      countTotal() {
+        return this.filteredInvoices.length;
+      },
+      countByCurrency() {
+        const counts = {};
+        this.filteredInvoices.forEach(inv => {
+          counts[inv.currency] = (counts[inv.currency] || 0) + 1;
+        });
+        return counts;
+      },
+      countPaidByCurrency() {
+        const counts = {};
+        this.filteredInvoices.filter(inv => inv.status === 'paid').forEach(inv => {
+          counts[inv.currency] = (counts[inv.currency] || 0) + 1;
+        });
+        return counts;
+      },
+      countUnpaidByCurrency() {
+        const counts = {};
+        this.filteredInvoices.filter(inv => inv.status !== 'paid').forEach(inv => {
+          counts[inv.currency] = (counts[inv.currency] || 0) + 1;
+        });
+        return counts;
       },
       totalByCurrency() {
         const sums = {};
-        this.invoices.forEach(inv => {
+        this.filteredInvoices.forEach(inv => {
           sums[inv.currency] = (sums[inv.currency] || 0) + parseFloat(inv.total);
         });
         return sums;
       },
       totalPaidByCurrency() {
         const sums = {};
-        this.invoices.filter(inv => inv.status === 'paid').forEach(inv => {
+        this.filteredInvoices.filter(inv => inv.status === 'paid').forEach(inv => {
           sums[inv.currency] = (sums[inv.currency] || 0) + parseFloat(inv.total);
         });
         return sums;
       },
       totalUnpaidByCurrency() {
         const sums = {};
-        this.invoices.filter(inv => inv.status !== 'paid').forEach(inv => {
+        this.filteredInvoices.filter(inv => inv.status !== 'paid').forEach(inv => {
           sums[inv.currency] = (sums[inv.currency] || 0) + parseFloat(inv.total);
         });
         return sums;
+      }
+    },
+    watch: {
+      invoices() {
+        this.$nextTick(() => {
+          this.renderCountChart();
+          this.renderAmountChart();
+        });
+      },
+      filteredInvoices() {
+        this.$nextTick(() => {
+          this.renderCountChart();
+          this.renderAmountChart();
+        });
       }
     },
     mounted() {

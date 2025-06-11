@@ -1,7 +1,19 @@
 <?php include 'header.php'; ?>
+
+<?php
+$templateFiles = glob(__DIR__ . '/../templates/invoiceemail_*.php');
+$emailTemplates = [];
+foreach ($templateFiles as $path) {
+    $filename = basename($path);
+    if (preg_match('/invoiceemail_(.+)\./', $filename, $m)) {
+        $emailTemplates[] = ['code' => $m[1], 'label' => strtoupper($m[1])];
+    }
+}
+?>
 <div id="app">
   <h1>Customers</h1>
   <button @click="openForm()" class="btn btn-primary mb-2">Add Customer</button>
+  <a href="contracts.php" class="btn btn-secondary mb-2 ms-2">Contracts</a>
   <table class="table table-bordered table-striped table-hover">
     <thead>
       <tr>
@@ -93,6 +105,11 @@
             <div class="mb-3"><label class="form-label">Country</label><input v-model="form.country" class="form-control" /></div>
             <div class="mb-3"><label class="form-label">Email</label><input v-model="form.email" type="email" required class="form-control" /></div>
             <div class="mb-3"><label class="form-label">Phone</label><input v-model="form.phone" class="form-control" /></div>
+            <div class="mb-3"><label class="form-label">Default Invoice Emails (comma-separated)</label><input v-model="defaultInvoiceEmailsInput" class="form-control" placeholder="e.g. user@example.com,info@example.org" /></div>
+            <div class="mb-3"><label class="form-label">Default Invoice Template</label><select v-model="form.default_invoice_template" class="form-select">
+                <option v-for="t in templateOptions" :value="t.code">{{ t.label }}</option>
+              </select></div>
+            <div class="mb-3"><label class="form-label">Payment Unique String</label><input v-model="form.payment_unique_string" class="form-control" placeholder="Unique identifier for auto assignment" /></div>
             <div class="mb-3"><label class="form-label">Logo</label><input ref="logoInput" type="file" accept=".png,.svg,.gif" @change="onLogoChange" class="form-control" /></div>
             <div class="mb-3" v-if="form.logo">
               <label class="form-label">Current Logo</label>
@@ -162,9 +179,8 @@
   </div>
 </div>
 <script>
-  const {
-    createApp
-  } = Vue;
+  const { createApp } = Vue;
+  const invoiceTemplates = <?php echo json_encode($emailTemplates); ?>;
   createApp({
     data() {
       return {
@@ -178,6 +194,9 @@
           prefix: ''
         },
         importFromCustomer: '',
+        // Default invoice templates and email list
+        templateOptions: invoiceTemplates,
+        defaultInvoiceEmailsInput: '',
         propertyOptions: {
           client: [{
               value: 'company',
@@ -305,8 +324,12 @@
           phone: '',
           currency: this.currencies[0],
           logo: '',
-          invoice_count: 0
+          invoice_count: 0,
+          default_invoice_emails: '',
+          default_invoice_template: this.templateOptions.length ? this.templateOptions[0].code : '',
+          payment_unique_string: ''
         };
+        this.defaultInvoiceEmailsInput = '';
         this.prefixes = [];
         this.newPrefix = {
           entity: 'client',
@@ -325,12 +348,27 @@
         this.$refs.logoInput.value = null;
         this.importFromCustomer = '';
         this.fetchPrefixes();
+        // Initialize default invoice email input
+        try {
+            const arr = this.form.default_invoice_emails ? JSON.parse(this.form.default_invoice_emails) : [];
+            this.defaultInvoiceEmailsInput = arr.join(',');
+        } catch {
+            this.defaultInvoiceEmailsInput = '';
+        }
+        // Ensure template selection is valid
+        if (!this.templateOptions.some(t => t.code === this.form.default_invoice_template)) {
+            this.form.default_invoice_template = this.templateOptions.length ? this.templateOptions[0].code : '';
+        }
         new bootstrap.Modal(this.$refs.modal).show();
       },
       goToInvoices(c) {
         window.location.href = 'invoices.php?customer_id=' + c.id;
       },
       async save() {
+        // Serialize default invoice emails input into JSON array string
+        this.form.default_invoice_emails = JSON.stringify(
+          this.defaultInvoiceEmailsInput.split(',').map(e => e.trim()).filter(e => e)
+        );
         const method = this.form.id ? 'PUT' : 'POST';
         const resp = await fetch('/api/customers.php', {
           method,
@@ -400,8 +438,8 @@
           event.target.value = null;
           return;
         }
-        if (file.size > 10 * 1024) {
-          alert('Logo must be 10KB or smaller');
+        if (file.size > 16 * 1024) {
+          alert('Logo must be 16KB or smaller');
           event.target.value = null;
           return;
         }

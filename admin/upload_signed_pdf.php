@@ -14,8 +14,7 @@ if (!$invoiceId || empty($_FILES['signed_pdf'])) {
     header('Location: invoice_form.php?invoice_id=' . $invoiceId . '&upload_status=error');
     exit;
 }
-// Fetch invoice info
-$stmt = $pdo->prepare('SELECT date, company_id FROM invoices WHERE id = ?');
+$stmt = $pdo->prepare('SELECT date, company_id, customer_id FROM invoices WHERE id = ?');
 $stmt->execute([$invoiceId]);
 $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$invoice) {
@@ -26,6 +25,10 @@ if (!$invoice) {
 $stmt2 = $pdo->prepare('SELECT name FROM companies WHERE id = ?');
 $stmt2->execute([$invoice['company_id']]);
 $companyName = $stmt2->fetchColumn() ?: '';
+// Fetch customer name
+$stmt3 = $pdo->prepare('SELECT name FROM customers WHERE id = ?');
+$stmt3->execute([$invoice['customer_id']]);
+$customerName = $stmt3->fetchColumn() ?: '';
 // Prepare directory
 $uploadDir = PRIVATE_DIR_PATH.'/invoices_signed/';
 if (!is_dir($uploadDir)) {
@@ -48,11 +51,11 @@ if ($mime !== 'application/pdf') {
     header('Location: invoice_form.php?invoice_id=' . $invoiceId . '&upload_status=error');
     exit;
 }
-// Build filename
+// Build filename: {invoiceDate}_{customerName}_{companySlug}_{uploadTimestamp}_{invoiceId}.pdf
 $invoiceDate = date('Y-m-d', strtotime($invoice['date']));
 $companySlug = preg_replace('/[^A-Za-z0-9]+/', '-', trim(substr($companyName, 0, 30)));
 $uploadTimestamp = date('Y-m-d_H:i:s');
-$filename = "{$invoiceDate}_{$companySlug}_{$uploadTimestamp}_{$invoiceId}.pdf";
+$filename = "{$invoiceDate}_{$customerName}_{$companySlug}_{$uploadTimestamp}_{$invoiceId}.pdf";
 // Move uploaded file
 if (!move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
     header('Location: invoice_form.php?invoice_id=' . $invoiceId . '&upload_status=error');

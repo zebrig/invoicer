@@ -207,6 +207,12 @@ createApp({
       }
     }
   },
+  watch: {
+    customer_id() {
+      this.startDate = '';
+      this.endDate = '';
+    }
+  },
   mounted() {
     this.fetchCustomers();
   }

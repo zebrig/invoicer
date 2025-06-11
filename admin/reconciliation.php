@@ -84,7 +84,7 @@ $templates = array_values(array_unique($templates));
     <div class="card-body">
       <div class="mb-3">
         <label class="form-label">Min Value (cut-off): <br>{{ cutoff }} {{ currency }}</label>
-        <input type="range" v-model="cutoff" :min="0" :max="maxTotal" step="1" class="form-range" />
+        <input type="range" v-model="cutoff" @input="cutoff = Number($event.target.value)" @touchmove="cutoff = Number($event.target.value)" :min="0" :max="maxTotal" step="1" class="form-range" />
       </div>
       <canvas id="inv-pay-chart" width="600" height="400" style="width:100%;"></canvas>
     </div>
@@ -386,6 +386,10 @@ $templates = array_values(array_unique($templates));
     watch: {
       cutoff() {
         this.drawChart(this.currentInvoices, this.currentPayments);
+      },
+      customer_id() {
+        this.startDate = '';
+        this.endDate = '';
       }
     },
     mounted() {

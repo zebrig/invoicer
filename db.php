@@ -7,7 +7,6 @@ $initDb = !file_exists($dbFile);
 if (!file_exists(PRIVATE_DIR_PATH.'/data')) {
     mkdir(PRIVATE_DIR_PATH.'/data', 0755, true);
 }
-
 $pdo = new PDO('sqlite:' . $dbFile);
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -32,6 +31,25 @@ CREATE TABLE customers (
     phone TEXT,
     currency TEXT,
     logo TEXT
+);
+CREATE TABLE contracts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    company_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    end_date TEXT,
+    name TEXT NOT NULL,
+    description TEXT,
+    FOREIGN KEY(customer_id) REFERENCES customers(id),
+    FOREIGN KEY(company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE contract_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contract_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    data TEXT,
+    FOREIGN KEY(contract_id) REFERENCES contracts(id)
 );
 
 CREATE TABLE invoices (
@@ -75,7 +93,6 @@ CREATE TABLE companies (
     currency TEXT NOT NULL DEFAULT 'USD',
     logo TEXT
 );
-
 CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     description TEXT,
@@ -155,20 +172,86 @@ SQL
     $stmt->execute([DEFAULT_ADMIN_USERNAME, $hash]);
 }
 
-// Migrate existing tables: ensure CEIDG/KRS (regon_krs_number) and REGON (regon_number) columns exist
-if (!$initDb) {
-    $cols = $pdo->query("PRAGMA table_info(companies)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('regon_krs_number', $cols, true)) {
-        $pdo->exec("ALTER TABLE companies ADD COLUMN regon_krs_number TEXT");
-    }
-    if (!in_array('regon_number', $cols, true)) {
-        $pdo->exec("ALTER TABLE companies ADD COLUMN regon_number TEXT");
-    }
-    $cols = $pdo->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('regon_krs_number', $cols, true)) {
-        $pdo->exec("ALTER TABLE customers ADD COLUMN regon_krs_number TEXT");
-    }
-    if (!in_array('regon_number', $cols, true)) {
-        $pdo->exec("ALTER TABLE customers ADD COLUMN regon_number TEXT");
-    }
+// Migrate existing database: add default_invoice_emails and default_invoice_template columns if not present
+$columns = $pdo->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_ASSOC);
+$colNames = array_column($columns, 'name');
+if (!in_array('default_invoice_emails', $colNames, true)) {
+    $pdo->exec("ALTER TABLE customers ADD COLUMN default_invoice_emails TEXT");
+}
+if (!in_array('default_invoice_template', $colNames, true)) {
+    $pdo->exec("ALTER TABLE customers ADD COLUMN default_invoice_template TEXT");
+}
+$columns = $pdo->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_ASSOC);
+$colNames = array_column($columns, 'name');
+// Migrate customers: add payment_unique_string column and unique index for same-currency uniqueness
+if (!in_array('payment_unique_string', $colNames, true)) {
+    $pdo->exec("ALTER TABLE customers ADD COLUMN payment_unique_string TEXT");
+}
+$indexInfo = $pdo->query("SELECT name FROM sqlite_master WHERE type='index' AND name='customers_payment_unique_string_idx'")->fetchColumn();
+if (!$indexInfo) {
+    $pdo->exec("CREATE UNIQUE INDEX customers_payment_unique_string_idx ON customers (payment_unique_string, currency)");
+}
+
+// Migrate invoices: add contract_id column if not present
+$columns = $pdo->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_ASSOC);
+$colNames = array_column($columns, 'name');
+if (!in_array('contract_id', $colNames, true)) {
+    $pdo->exec("ALTER TABLE invoices ADD COLUMN contract_id INTEGER");
+}
+
+// Migrate contracts table if not present
+$tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+if (!in_array('contracts', $tables, true)) {
+    $pdo->exec(<<<'SQL'
+CREATE TABLE contracts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    company_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    end_date TEXT,
+    name TEXT NOT NULL,
+    description TEXT,
+    FOREIGN KEY(customer_id) REFERENCES customers(id),
+    FOREIGN KEY(company_id) REFERENCES companies(id)
+);
+SQL
+    );
+}
+
+// Migrate contract_files table if not present
+if (!in_array('contract_files', $tables, true)) {
+    $pdo->exec(<<<'SQL'
+CREATE TABLE contract_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contract_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    data TEXT,
+    FOREIGN KEY(contract_id) REFERENCES contracts(id)
+);
+SQL
+    );
+}
+
+// Migrate change log for paid/unpaid status and payment association events
+if (!in_array('change_log', $tables, true)) {
+    $pdo->exec(<<<'SQL'
+CREATE TABLE change_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    change_date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    event_type TEXT NOT NULL,
+    invoice_id INTEGER,
+    payment_id INTEGER,
+    prev_value TEXT,
+    new_value TEXT,
+    reason TEXT,
+    balance_before REAL,
+    balance_after REAL,
+    user_id INTEGER,
+    ip_address TEXT,
+    FOREIGN KEY(invoice_id) REFERENCES invoices(id),
+    FOREIGN KEY(payment_id) REFERENCES pko_payments(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);
+SQL
+    );
 }

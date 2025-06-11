@@ -31,16 +31,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 $invoiceId = isset($_GET['invoice_id']) ? (int)$_GET['invoice_id'] : 0;
 $files = [];
 if ($invoiceId) {
-    $dir = PRIVATE_DIR_PATH.'/invoices_history/';
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
-    }
-    if (is_dir($dir)) {
-        $pattern = $dir . "*_{$invoiceId}.html";
-        $paths = glob($pattern);
-        usort($paths, function($a, $b) { return filemtime($b) - filemtime($a); });
-        foreach ($paths as $path) {
-            $files[] = basename($path);
+    // Fetch invoice number to use in history filename pattern
+    $stmt = $pdo->prepare('SELECT invoice_number FROM invoices WHERE id = ?');
+    $stmt->execute([$invoiceId]);
+    $invNum = $stmt->fetchColumn();
+    if ($invNum) {
+        $dir = PRIVATE_DIR_PATH.'/invoices_history/';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        if (is_dir($dir)) {
+            $pattern = $dir . "*_{$invNum}_*.html";
+            $paths = glob($pattern);
+            usort($paths, function($a, $b) { return filemtime($b) - filemtime($a); });
+            foreach ($paths as $path) {
+                $files[] = basename($path);
+            }
         }
     }
 }

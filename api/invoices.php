@@ -32,7 +32,8 @@ switch ($method) {
                 }
             }
             $stmt = $pdo->prepare(
-                'SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,company_id FROM invoices WHERE customer_id = ? ORDER BY date DESC'
+                'SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,company_id,contract_id,(SELECT name FROM companies WHERE id=invoices.company_id) AS company_name'
+                . ' FROM invoices WHERE customer_id = ? ORDER BY date DESC'
             );
             $stmt->execute([$customerId]);
             $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -89,7 +90,8 @@ switch ($method) {
         } else {
             if (is_admin()) {
                 $stmt = $pdo->query(
-                    'SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,customer_id,company_id FROM invoices ORDER BY date DESC'
+                'SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,customer_id,company_id,contract_id,(SELECT name FROM companies WHERE id=invoices.company_id) AS company_name'
+                . ' FROM invoices ORDER BY date DESC'
                 );
                 $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             } else {
@@ -102,9 +104,12 @@ switch ($method) {
                     exit;
                 }
                 $placeholders = implode(',', array_fill(0, count($assigned), '?'));
-                $stmt = $pdo->prepare(
-                    "SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,customer_id,company_id FROM invoices WHERE customer_id IN ({$placeholders}) ORDER BY date DESC"
-                );
+            $stmt = $pdo->prepare(
+                "SELECT id,invoice_number,date,month_service,status,currency,subtotal,tax,total,customer_id,company_id,contract_id,"
+                ."(SELECT name FROM companies WHERE id=invoices.company_id) AS company_name,"
+                ."(SELECT name FROM customers WHERE id=invoices.customer_id) AS customer_name"
+                ." FROM invoices WHERE customer_id IN ({$placeholders}) ORDER BY date DESC"
+            );
                 $stmt->execute($assigned);
                 $invoices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
@@ -139,21 +144,25 @@ switch ($method) {
         $data['total']    = number_format((float)($data['total'] ?? 0), 2, '.', '');
         $stmt = $pdo->prepare(
             'INSERT INTO invoices (
-                customer_id,company_id,invoice_number,date,month_service,status,template,
+                customer_id,company_id,contract_id,invoice_number,date,month_service,status,template,
                 currency,vat_rate,items,company_details,subtotal,tax,total
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
         );
         $dbSaved = false;
         try {
-            $dbSaved = $stmt->execute([
-                $data['customer_id'], $data['company_id'], $data['invoice_number'], $data['date'], $data['month_service'], $data['status'], $data['template'],
-                $data['currency'], $data['vat_rate'], json_encode($data['items']),
-                json_encode($data['company_details']), $data['subtotal'], $data['tax'], $data['total'],
-            ]);
-        } catch (Exception $e) {
-            $dbSaved = false;
+        $stmt->execute([
+            $data['customer_id'], $data['company_id'], $data['contract_id'] ?? null, $data['invoice_number'], $data['date'], $data['month_service'], $data['status'], $data['template'],
+            $data['currency'], $data['vat_rate'], json_encode($data['items']),
+            json_encode($data['company_details']), $data['subtotal'], $data['tax'], $data['total'],
+        ]);
+            $newId = $pdo->lastInsertId();
+            $dbSaved = true;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'Internal Server Error']);
+            break;
         }
-        $id = $dbSaved ? $pdo->lastInsertId() : null;
         $fileSaved = false;
         $fileError = null;
         if ($dbSaved && !empty($data['preview_html'])) {
@@ -199,7 +208,14 @@ switch ($method) {
                 $fileError = $e->getMessage();
             }
         }
-        echo json_encode(['id' => $id, 'db_saved' => $dbSaved, 'file_saved' => $fileSaved, 'file_error' => $fileError]);
+        http_response_code(201);
+        header('Location: /api/invoices.php?id=' . $newId);
+        echo json_encode([
+            'id' => $newId,
+            'db_saved'   => $dbSaved,
+            'file_saved' => $fileSaved,
+            'file_error' => $fileError,
+        ]);
         break;
     case 'PUT':
         $data = json_decode(file_get_contents('php://input'), true);
@@ -209,24 +225,38 @@ switch ($method) {
         $data['total']    = number_format((float)($data['total'] ?? 0), 2, '.', '');
         $stmt = $pdo->prepare(
             'UPDATE invoices SET
-                customer_id=?,company_id=?,invoice_number=?,date=?,month_service=?,status=?,template=?,
+                customer_id=?,company_id=?,contract_id=?,invoice_number=?,date=?,month_service=?,status=?,template=?,
                 currency=?,vat_rate=?,items=?,company_details=?,subtotal=?,tax=?,total=?
              WHERE id=?'
         );
+        if (empty($data['id']) || !is_numeric($data['id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid invoice ID.']);
+            break;
+        }
         $dbSaved = false;
         try {
-            $dbSaved = $stmt->execute([
-                $data['customer_id'], $data['company_id'], $data['invoice_number'], $data['date'], $data['month_service'], $data['status'], $data['template'],
+            $stmt->execute([
+                $data['customer_id'], $data['company_id'], $data['contract_id'] ?? null, $data['invoice_number'], $data['date'], $data['month_service'], $data['status'], $data['template'],
                 $data['currency'], $data['vat_rate'], json_encode($data['items']),
                 json_encode($data['company_details']), $data['subtotal'], $data['tax'], $data['total'],
-                $data['id'],
+                (int)$data['id'],
             ]);
-        } catch (Exception $e) {
-            $dbSaved = false;
+            if ($stmt->rowCount() === 0) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Invoice not found.']);
+                break;
+            }
+            $dbSaved = true;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'Internal Server Error']);
+            break;
         }
         $fileSaved = false;
         $fileError = null;
-        if ($dbSaved && !empty($data['preview_html']) && !empty($data['id'])) {
+        if (!empty($data['preview_html'])) {
             if (!is_dir($historyDir)) {
                 mkdir($historyDir, 0755, true);
             }
@@ -269,14 +299,32 @@ switch ($method) {
                 $fileError = $e->getMessage();
             }
         }
-        echo json_encode(['db_saved' => $dbSaved, 'file_saved' => $fileSaved, 'file_error' => $fileError]);
+        echo json_encode([
+            'db_saved'   => $dbSaved,
+            'file_saved' => $fileSaved,
+            'file_error' => $fileError,
+        ]);
         break;
     case 'DELETE':
         $id = $_GET['id'] ?? null;
-        if ($id) {
-            $stmt = $pdo->prepare('DELETE FROM invoices WHERE id = ?');
-            $stmt->execute([$id]);
+        if (!is_numeric($id)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid invoice ID.']);
+            break;
         }
-        echo json_encode(['success' => true]);
+        try {
+            $stmt = $pdo->prepare('DELETE FROM invoices WHERE id = ?');
+            $stmt->execute([(int)$id]);
+            if ($stmt->rowCount() === 0) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Invoice not found.']);
+            } else {
+                http_response_code(204);
+            }
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'Internal Server Error']);
+        }
         break;
 }

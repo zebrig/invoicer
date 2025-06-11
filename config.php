@@ -47,6 +47,12 @@ if (!defined('AZURE_CLIENT_SECRET')) {
 if (!defined('AZURE_SHARED_MAILBOX_EMAIL')) {
     define('AZURE_SHARED_MAILBOX_EMAIL', getenv('AZURE_SHARED_MAILBOX_EMAIL') ?: 'shared-mailbox@example.com');
 }
+if (!defined('AZURE_INVOICES_SHARED_MAILBOX_EMAIL')) {
+    define('AZURE_INVOICES_SHARED_MAILBOX_EMAIL', getenv('AZURE_INVOICES_SHARED_MAILBOX_EMAIL') ?: 'shared-invoice-mailbox@example.com');
+}
+if (!defined('AZURE_INVOICES_SHARED_MAILBOX_FROM_NAME')) {
+    define('AZURE_INVOICES_SHARED_MAILBOX_FROM_NAME', getenv('AZURE_INVOICES_SHARED_MAILBOX_FROM_NAME') ?: 'Your Company Name');
+}
 if (!defined('AZURE_REDIRECT_URI')) {
     define('AZURE_REDIRECT_URI', getenv('AZURE_REDIRECT_URI') ?: 'https://your-domain/fetch_pko_messages.php');
 }
